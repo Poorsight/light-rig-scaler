@@ -1,118 +1,118 @@
 # ONBOARDING — Sectional Light Rig Scaler
 
-> Контекст для нового разработчика (и его Claude Code), чтобы подхватить проект
-> и встроить генератор в свой сайт без дополнительных вопросов.
+> Context for a new developer (and their Claude Code) to pick up the project
+> and embed the generator into their own site without further questions.
 
 ## TL;DR
-Веб-инструмент: вводишь габариты секционного дивана (Ширина × Глубина × Высота) →
-получаешь **Unreal Engine T3D** пяти источников света, который вставляется прямо в
-видовое окно UE через `Ctrl + V`. Вся логика — в одном файле `index.html`,
-без сборки и без внешних зависимостей.
+A web tool: you enter the dimensions of a sectional sofa (Width × Depth × Height) →
+you get the **Unreal Engine T3D** of five light sources, which is pasted directly into
+the UE viewport via `Ctrl + V`. All the logic is in a single file, `index.html`,
+with no build step and no external dependencies.
 
-- Репозиторий: https://github.com/Poorsight/light-rig-scaler
-- Онлайн (GitHub Pages): https://poorsight.github.io/light-rig-scaler/
-- Локально: открыть `index.html` двойным кликом **или** `npx serve . -l 5500`
+- Repository: https://github.com/Poorsight/light-rig-scaler
+- Online (GitHub Pages): https://poorsight.github.io/light-rig-scaler/
+- Locally: open `index.html` by double-clicking **or** `npx serve . -l 5500`
 
-## Задача (типовая)
-Встроить этот генератор в другой сайт/приложение. Переиспользуемая часть —
-**чистые функции расчёта и генерации T3D**; текущий UI — лишь обёртка вокруг них.
+## Task (typical)
+Embed this generator into another site/application. The reusable part is the
+**pure calculation and T3D generation functions**; the current UI is merely a wrapper around them.
 
-## Архитектура
-Один самодостаточный `index.html`:
-- `<style>` — оформление UI.
-- `<script>` — две части:
-  1. **Чистая логика** (это и переиспользуем):
-     - `REF_DEFAULT = {W:453, D:274, H:77}` — габариты дивана, под который настроен эталонный риг.
-     - `LIGHTS` — базовые параметры 5 источников (имя → позиция, интенсивность, тип, размеры).
-     - `TEMPLATE` — строка с исходным T3D (UE-экспорт 5 акторов).
-     - `computeAll(W, D, H, mode, swap, ref)` → объект результатов по каждому источнику.
-     - `generateT3D(res)` → строка T3D, готовая к вставке в UE.
-     - `fmt`, `hyp` — утилиты форматирования/расстояния.
-     - Внизу — `module.exports` под guard'ом `typeof module !== "undefined"` (для node-тестов).
-  2. **UI** — обёрнут в `if (typeof document !== "undefined")`: навешивает обработчики, рендерит таблицу и панель «Формула расчёта».
+## Architecture
+A single self-contained `index.html`:
+- `<style>` — UI styling.
+- `<script>` — two parts:
+  1. **Pure logic** (this is what we reuse):
+     - `REF_DEFAULT = {W:453, D:274, H:77}` — the dimensions of the sofa for which the reference rig was tuned.
+     - `LIGHTS` — the base parameters of the 5 sources (name → position, intensity, type, dimensions).
+     - `TEMPLATE` — a string with the source T3D (a UE export of 5 actors).
+     - `computeAll(W, D, H, mode, swap, ref)` → an object of results for each source.
+     - `generateT3D(res)` → a T3D string, ready to be pasted into UE.
+     - `fmt`, `hyp` — formatting/distance utilities.
+     - At the bottom — `module.exports` under the guard `typeof module !== "undefined"` (for node tests).
+  2. **UI** — wrapped in `if (typeof document !== "undefined")`: attaches handlers, renders the table and the "Calculation formula" panel.
 
-## Контракт ввода/вывода (главное для интеграции)
+## Input/output contract (the key thing for integration)
 ```js
 const res = computeAll(W, D, H, mode, swap, ref);
-//   W, D, H — габариты дивана, см
-//   mode    — "A" (масштабировать размеры источников → I·k²)
-//           | "B" (фикс. размеры → I·k^p)
-//   swap    — bool: диван повёрнут на 90° (меняет соответствие осей X↔Y)
-//   ref     — {W,D,H} эталон рига (обычно REF_DEFAULT)
+//   W, D, H — sofa dimensions, cm
+//   mode    — "A" (scale the source dimensions → I·k²)
+//           | "B" (fixed dimensions → I·k^p)
+//   swap    — bool: the sofa is rotated 90° (swaps the X↔Y axis mapping)
+//   ref     — {W,D,H} the rig reference (usually REF_DEFAULT)
 //
 // res[name] = {
 //   type,            // "rect" | "spot"
-//   pos: [x,y,z],    // новая позиция
-//   intensity,       // новая Intensity (Candelas)
-//   k, p, I0,        // коэффициенты/исходная интенсивность (для таблицы)
-//   atten,           // новый AttenuationRadius | null
+//   pos: [x,y,z],    // new position
+//   intensity,       // new Intensity (Candelas)
+//   k, p, I0,        // coefficients/original intensity (for the table)
+//   atten,           // new AttenuationRadius | null
 //   // rect: w, h, barn   | spot: radius, soft
 // }
 
-const t3d = generateT3D(res);   // строка → в буфер обмена → Ctrl+V в UE
+const t3d = generateT3D(res);   // string → to the clipboard → Ctrl+V in UE
 ```
-`generateT3D` берёт `TEMPLATE` и заменяет **только числовые поля** (позиция,
-интенсивность, размеры источника, AttenuationRadius) внутри каждого актора,
-не трогая структуру и повороты — поэтому результат всегда валиден для вставки.
+`generateT3D` takes `TEMPLATE` and replaces **only the numeric fields** (position,
+intensity, source dimensions, AttenuationRadius) inside each actor,
+without touching the structure or rotations — so the result is always valid for pasting.
 
-## Формула (полная версия — в панели «Формула расчёта» на самом сайте)
-- Масштаб: `sX = W/453`, `sY = D/274`, `sZ = H/77` (при `swap` X↔Y меняются).
-- Позиция: `pos · s` покоординатно.
-- `k = |new_pos| / |old_pos|` — своё для каждого источника.
-- Эфф. радиус `R`: spot → `SourceRadius`; rect → `√(SourceWidth·SourceHeight / π)`.
-- Режим **A**: размеры источников `· k`, `Intensity · k²`.
-- Режим **B**: `Intensity · (k²·d² + R²) / (d² + R²) ≈ Intensity · k^p`, где `p = 2d²/(d²+R²)`.
-- `AttenuationRadius · k`. Повороты, цвет, температура — без изменений.
-- **Оси:** world X ↔ ширина (453), Y ↔ глубина (274), Z ↔ высота (77).
+## Formula (full version — in the "Calculation formula" panel on the site itself)
+- Scale: `sX = W/453`, `sY = D/274`, `sZ = H/77` (with `swap`, X↔Y are swapped).
+- Position: `pos · s` per coordinate.
+- `k = |new_pos| / |old_pos|` — individual for each source.
+- Effective radius `R`: spot → `SourceRadius`; rect → `√(SourceWidth·SourceHeight / π)`.
+- Mode **A**: source dimensions `· k`, `Intensity · k²`.
+- Mode **B**: `Intensity · (k²·d² + R²) / (d² + R²) ≈ Intensity · k^p`, where `p = 2d²/(d²+R²)`.
+- `AttenuationRadius · k`. Rotations, color, temperature — unchanged.
+- **Axes:** world X ↔ width (453), Y ↔ depth (274), Z ↔ height (77).
 
-## Как встроить в сайт
-1. **Вынеси чистую логику в модуль.** Граница извлечения: весь код от `"use strict";` до блока `module.exports` (включительно). Всё, что ниже — это `if (typeof document !== "undefined") { … }` (UI-обёртка); для headless/библиотечного использования её можно отбросить (она безвредна, но не нужна).
-   - Для ESM замени строку `module.exports = {…}` на `export { REF_DEFAULT, LIGHTS, TEMPLATE, computeAll, generateT3D, fmt, hyp };`.
-   - `TEMPLATE` — обычный многострочный template literal без обратных кавычек внутри, копируется в `.js/.mjs` как есть.
-2. **Вызывай** `generateT3D(computeAll(W, D, H, mode, swap, ref))`; результат клади в буфер: `navigator.clipboard.writeText(t3d)` (фолбэк через `document.execCommand` — для не-secure контекста).
-3. UI делай свой — внешних зависимостей нет.
+## How to embed it into a site
+1. **Extract the pure logic into a module.** The extraction boundary: all the code from `"use strict";` up to and including the `module.exports` block. Everything below is `if (typeof document !== "undefined") { … }` (the UI wrapper); for headless/library use it can be dropped (it is harmless but not needed).
+   - For ESM, replace the line `module.exports = {…}` with `export { REF_DEFAULT, LIGHTS, TEMPLATE, computeAll, generateT3D, fmt, hyp };`.
+   - `TEMPLATE` is an ordinary multi-line template literal with no backticks inside, and copies into a `.js/.mjs` as is.
+2. **Call** `generateT3D(computeAll(W, D, H, mode, swap, ref))`; put the result on the clipboard: `navigator.clipboard.writeText(t3d)` (fallback via `document.execCommand` — for non-secure contexts).
+3. Build your own UI — there are no external dependencies.
 
-**Требования к рантайму:** чистая логика — ES2017+ (стрелочные функции, template literals, `Object.entries`, default-параметры); helper буфера использует `async/await`. Для evergreen-браузеров транспиляция не нужна; для старых рантаймов транспилируй модуль сам. Зависимостей нет. Тест-раннер — Node 18+ (только для проверки, не для прода).
+**Runtime requirements:** the pure logic is ES2017+ (arrow functions, template literals, `Object.entries`, default parameters); the clipboard helper uses `async/await`. For evergreen browsers no transpilation is needed; for older runtimes, transpile the module yourself. There are no dependencies. The test runner is Node 18+ (for verification only, not for production).
 
-## Подводные камни
-- **Буфер обмена:** `navigator.clipboard` доступен только в secure context (https / localhost). На `file://` нужен фолбэк (в текущем коде он есть).
-- **Вставка в UE:** пути ассетов в T3D нейтрализованы на `/Game/LightRig/…`. Акторы при вставке создаются заново, но стоит один раз проверить вставку в видовом окне.
-- **Не ломать `TEMPLATE`:** менять можно только числовые значения; структуру и повороты — нельзя, иначе вставка может перестать работать.
+## Pitfalls
+- **Clipboard:** `navigator.clipboard` is available only in a secure context (https / localhost). On `file://` you need the fallback (it is present in the current code).
+- **Pasting into UE:** the asset paths in the T3D are neutralized to `/Game/LightRig/…`. Actors are created anew on paste, but it is worth verifying the paste in the viewport once.
+- **Don't break `TEMPLATE`:** you may change only the numeric values; the structure and rotations must not be changed, otherwise pasting may stop working.
 
-## Что именно переписывает generateT3D
-Внутри каждого актора (актор находится по `ActorLabel="…"`, которое **обязано** совпадать с ключом в `LIGHTS` и быть уникальным) переписываются только:
+## What exactly generateT3D rewrites
+Inside each actor (the actor is located by `ActorLabel="…"`, which **must** match the key in `LIGHTS` and be unique) only the following are rewritten:
 - `RelativeLocation`, `Intensity`;
 - rect: `SourceWidth`, `SourceHeight`, `BarnDoorLength`;  spot: `SourceRadius`, `SoftSourceRadius`;
-- `AttenuationRadius` (если присутствует).
+- `AttenuationRadius` (if present).
 
-Намеренно **не трогаются**: повороты, `Temperature`, углы конуса, `ExportPath`. Каждое поле должно стоять на отдельной строке вида `^(пробелы)Field=…` (замена идёт по первому совпадению в блоке, без `/g`). Добавить источник = продублировать целый блок `Begin Actor…End Actor` с уникальным `ActorLabel` и добавить соответствующую запись в `LIGHTS`.
+Deliberately **not touched**: rotations, `Temperature`, cone angles, `ExportPath`. Each field must be on its own line of the form `^(spaces)Field=…` (the replacement matches the first occurrence in the block, without `/g`). To add a source = duplicate an entire `Begin Actor…End Actor` block with a unique `ActorLabel` and add the corresponding entry to `LIGHTS`.
 
-## Регенерация базового рига (если изменился исходный риг в UE)
-⚠️ `LIGHTS` и `TEMPLATE` — это **два независимых, вручную поддерживаемых представления одних и тех же чисел**: `TEMPLATE` мутируется, `LIGHTS` — источник чисел для `computeAll`. Обновишь одно и забудешь другое — identity-инвариант молча сломается, и все масштабированные выводы станут неверными.
+## Regenerating the base rig (if the source rig in UE changed)
+⚠️ `LIGHTS` and `TEMPLATE` are **two independent, manually maintained representations of the same numbers**: `TEMPLATE` is mutated, `LIGHTS` is the source of numbers for `computeAll`. Update one and forget the other and the identity invariant silently breaks, and all scaled outputs become incorrect.
 
-Порядок обновления:
-1. В UE выдели 5 источников → `Ctrl+C` → вставь T3D в `TEMPLATE`. Нейтрализуй пути ассетов на `/Game/LightRig/…` (как сделано сейчас).
-2. **Синхронизируй `LIGHTS` вручную:** для каждого актора перенеси `pos` (из `RelativeLocation`), `intensity` (`Intensity`), размеры (rect: `w`/`h`/`barn`; spot: `radius`/`soft`) и `atten` (`AttenuationRadius` или `null`).
-3. Обнови `REF_DEFAULT` на габариты дивана, под который авторился новый риг.
-4. Прогони `npm test` — прохождение identity и доказывает, что `LIGHTS` и `TEMPLATE` согласованы.
+Update procedure:
+1. In UE, select the 5 sources → `Ctrl+C` → paste the T3D into `TEMPLATE`. Neutralize the asset paths to `/Game/LightRig/…` (as done now).
+2. **Synchronize `LIGHTS` manually:** for each actor, carry over `pos` (from `RelativeLocation`), `intensity` (`Intensity`), dimensions (rect: `w`/`h`/`barn`; spot: `radius`/`soft`) and `atten` (`AttenuationRadius` or `null`).
+3. Update `REF_DEFAULT` to the dimensions of the sofa for which the new rig was authored.
+4. Run `npm test` — passing identity proves that `LIGHTS` and `TEMPLATE` are consistent.
 
-## Тесты
-Ключевой инвариант — при вводе эталонных габаритов вывод побайтно равен исходнику:
+## Tests
+The key invariant — when the reference dimensions are entered, the output is byte-for-byte equal to the source:
 ```js
 generateT3D(computeAll(453, 274, 77, "A", false, REF_DEFAULT)) === TEMPLATE   // true
 ```
-Готовый прогон (Node 18+):
+Ready-to-run (Node 18+):
 ```bash
 npm test          # = node test/sanity.cjs
 ```
-`test/sanity.cjs` сам извлекает чистую логику из `index.html` и проверяет: identity
-(режимы A и B), масштабированный кейс (вывод меняется, но 5 акторов и число строк
-сохраняются) и отсутствие брендинга. Если интеграция что-то сломала — тест упадёт
-(ненулевой exit code). Запускай его после любых правок `LIGHTS`/`TEMPLATE`.
+`test/sanity.cjs` itself extracts the pure logic from `index.html` and checks: identity
+(modes A and B), the scaled case (the output changes, but the 5 actors and the line count
+are preserved) and the absence of branding. If integration broke something, the test fails
+(non-zero exit code). Run it after any edits to `LIGHTS`/`TEMPLATE`.
 
-## Старт в Claude Code
-Открой репозиторий в Claude Code. Всё ключевое — в `index.html`:
-- чистая логика и `TEMPLATE` — верх `<script>`;
-- панель «Формула расчёта» — что и как считается;
-- `README.md` — обзор и деплой на GitHub Pages;
-- `.claude/launch.json` — конфиг локального сервера (`npx serve`).
+## Getting started in Claude Code
+Open the repository in Claude Code. Everything essential is in `index.html`:
+- the pure logic and `TEMPLATE` — the top of `<script>`;
+- the "Calculation formula" panel — what is computed and how;
+- `README.md` — overview and deployment to GitHub Pages;
+- `.claude/launch.json` — the local server config (`npx serve`).

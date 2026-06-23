@@ -1,52 +1,52 @@
 # Sectional — Light Rig Scaler
 
-Статический сайт (один `index.html`, без сборки), который масштабирует световой риг
-для секционных диванов под нужный габарит и отдаёт готовый **T3D** для вставки
-в Unreal через `Ctrl + V`.
+A static site (a single `index.html`, no build step) that scales the light rig
+for sectional sofas to the required dimensions and outputs a ready-to-use **T3D** for pasting
+into Unreal via `Ctrl + V`.
 
-## Как пользоваться
+## How to use
 
-1. Открой сайт.
-2. Введи габариты дивана: **Ширина (X)**, **Глубина (Y)**, **Высота (Z)** в см.
-3. Нажми **«Копировать»**.
-4. В Unreal: кликни в видовом окне уровня → `Ctrl + V`. Появятся 5 источников
+1. Open the site.
+2. Enter the sofa dimensions: **Width (X)**, **Depth (Y)**, **Height (Z)** in cm.
+3. Click **"Copy"**.
+4. In Unreal: click in the level viewport → `Ctrl + V`. Five lights will appear
    (`front_fill_lgt`, `main_key_lgt`, `left_rim_lgt`, `right_bounce_lgt`, `right_rim_lgt`)
-   в папке `Lights`.
+   in the `Lights` folder.
 
-> При вводе габаритов, равных эталонным (453 × 274 × 77), вывод побайтно совпадает
-> с исходным ригом — удобно проверить, что ничего не «поехало».
+> When you enter dimensions equal to the reference ones (453 × 274 × 77), the output matches
+> the original rig byte for byte — a handy way to verify that nothing has "drifted".
 
-## Логика масштабирования
+## Scaling logic
 
-| Что | Правило |
+| What | Rule |
 |---|---|
-| Позиции | покоординатно: `X·(W/453)`, `Y·(D/274)`, `Z·(H/77)` |
-| Дистанция света | `k = |new_pos| / |old_pos|` (своё для каждого источника) |
-| Интенсивность, режим **A** | размеры источников `×k`, интенсивность `×k²` (обратный квадрат работает строго) |
-| Интенсивность, режим **B** | размеры неизменны, `I·(k²·d² + R²)/(d² + R²) ≈ I·k^p`, где `p = 2d²/(d²+R²)` |
-| AttenuationRadius | `×k` (тянется за дистанцией) |
-| Повороты, цвет, температура | не меняются |
+| Positions | per-coordinate: `X·(W/453)`, `Y·(D/274)`, `Z·(H/77)` |
+| Light distance | `k = |new_pos| / |old_pos|` (individual to each light) |
+| Intensity, mode **A** | light sizes `×k`, intensity `×k²` (inverse square holds strictly) |
+| Intensity, mode **B** | sizes unchanged, `I·(k²·d² + R²)/(d² + R²) ≈ I·k^p`, where `p = 2d²/(d²+R²)` |
+| AttenuationRadius | `×k` (follows the distance) |
+| Rotations, color, temperature | unchanged |
 
-- **Оси:** world X ↔ ширина (453), Y ↔ глубина (274), Z ↔ высота (77). Определено по
-  заливке: `SourceWidth = 500 ≈ 453`. Чекбокс «повёрнут на 90°» меняет X↔Y местами.
-- **Режим A** — рекомендуется: сохраняет характер теней, предсказуемый `k²`.
-- **Режим B** — объясняет, почему «обратный квадрат не работает»: у больших мягких
-  источников (fill, left_rim) `R` сравнимо с дистанцией → падение мягче (`~k^1.7`),
-  у резкого `main_key` → почти `k²`.
+- **Axes:** world X ↔ width (453), Y ↔ depth (274), Z ↔ height (77). Determined by
+  the fill: `SourceWidth = 500 ≈ 453`. The "rotated 90°" checkbox swaps X↔Y.
+- **Mode A** — recommended: preserves the character of the shadows, with predictable `k²`.
+- **Mode B** — explains why "inverse square doesn't work": for large soft
+  lights (fill, left_rim), `R` is comparable to the distance → softer falloff (`~k^1.7`),
+  while for the sharp `main_key` → almost `k²`.
 
-## Деплой на GitHub Pages
+## Deploy to GitHub Pages
 
-**Вариант 1 — отдельный репозиторий:**
+**Option 1 — separate repository:**
 ```bash
-# скопировать содержимое light-rig-web/ в новый репозиторий
+# copy the contents of light-rig-web/ into a new repository
 git init && git add . && git commit -m "light rig scaler"
 git branch -M main
 git remote add origin <repo-url>
 git push -u origin main
 ```
-Settings → Pages → Source: `main` / `/ (root)`. Сайт: `https://<user>.github.io/<repo>/`.
+Settings → Pages → Source: `main` / `/ (root)`. Site: `https://<user>.github.io/<repo>/`.
 
-**Вариант 2 — папка `/docs` в текущем репозитории:**
-переименуй `light-rig-web/` → `docs/`, в Settings → Pages выбери `main` / `/docs`.
+**Option 2 — `/docs` folder in the current repository:**
+rename `light-rig-web/` → `docs/`, then in Settings → Pages choose `main` / `/docs`.
 
-Сборка не нужна — это чистый статический файл.
+No build is required — this is a pure static file.
