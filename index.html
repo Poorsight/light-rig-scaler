@@ -504,8 +504,27 @@ if (typeof document !== "undefined"){
     right_rim_lgt:    { yaw:180,  pitch:0,   cone:null, label:"R rim",  color:"#4fd1c5", temp:6000 },
   };
 
-  /* Presets: a built-in reference + your own (saved in localStorage). */
-  const BUILTIN = { "Reference (453 × 274 × 77)": { W:453, D:274, H:77 } };
+  /* Presets: reference + RH sectional models (UPH bounds measured in the UE project) + your own (localStorage). */
+  const BUILTIN = {
+    "Reference (453 × 274 × 77)":                        { W:453, D:274, H:77 },
+    "Borgo · Double Partial-Back U (39940015)":          { W:423, D:276, H:80 },
+    "Borgo · Partial-Back Chaise-End U (39940017)":      { W:390, D:276, H:80 },
+    "Borgo · Partial-Back U (39940016)":                 { W:390, D:307, H:80 },
+    "Borgo · Right-Arm Chaise (39250509)":               { W:361, D:210, H:80 },
+    "Borgo · Right-Arm L (39250511)":                    { W:381, D:310, H:80 },
+    "Borgo · U (39250513)":                              { W:453, D:280, H:80 },
+    "Koper · Chaise-End U (39940020)":                   { W:394, D:276, H:83 },
+    "Koper · Left-Arm L (39250480)":                     { W:385, D:305, H:82 },
+    "Koper · U-Chaise (39250482)":                       { W:403, D:233, H:83 },
+    "Koper · U (39250483)":                              { W:459, D:276, H:83 },
+    "Masson · Left-Arm 2-Seat Chaise-End U (40460153)":  { W:453, D:275, H:78 },
+    "Masson · Right-Arm Chaise-End (39250417)":          { W:361, D:200, H:78 },
+    "Masson · Right-Arm L (39250419)":                   { W:312, D:246, H:77 },
+    "Masson · Right-Arm 2-Seat Chaise-End U (40460154)": { W:453, D:275, H:78 },
+    "Masson · U-Chaise (39250420)":                      { W:447, D:200, H:78 },
+    "Masson · U (39250421)":                             { W:434, D:275, H:78 },
+    "Onic · Right-Arm L (39250451)":                     { W:343, D:307, H:79 },
+  };
   const LS_KEY = "lrs_presets";
   const userPresets = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch(e){ return {}; } };
   const setUserPresets = p => { try { localStorage.setItem(LS_KEY, JSON.stringify(p)); } catch(e){} };
