@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -61,121 +61,141 @@
   .fml .eq{margin:4px 0;white-space:nowrap}
   .fml .v{color:var(--accent)}
   .fml sub,.fml sup{font-size:10px}
+  .diagram{grid-column:1 / -1}
+  #diagram{width:100%;height:460px;background:#0f1115;border:1px solid var(--line);border-radius:8px;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--muted);align-items:center}
+  .legend .it{display:flex;align-items:center;gap:6px}
+  .legend .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
 </style>
 </head>
 <body>
 <header>
   <h1>Sectional — Light Rig Scaler</h1>
-  <p>Введите габариты дивана → получите готовый T3D пяти источников света. Кнопка «Копировать» → в видовом окне Unreal нажмите <b>Ctrl + V</b>.</p>
+  <p>Enter the sofa dimensions → get ready-to-paste T3D for the five lights. Hit <b>Copy</b>, then press <b>Ctrl + V</b> in the Unreal viewport.</p>
 </header>
 
 <main>
   <!-- ── Controls ───────────────────────────── -->
   <section class="panel">
-    <h2>Габариты дивана (см)</h2>
+    <h2>Sofa dimensions (cm)</h2>
     <div class="grid3">
       <div>
-        <label>Ширина · X</label>
+        <label>Width · X</label>
         <input id="W" type="number" value="453" step="1" min="1" />
       </div>
       <div>
-        <label>Глубина · Y</label>
+        <label>Depth · Y</label>
         <input id="D" type="number" value="274" step="1" min="1" />
       </div>
       <div>
-        <label>Высота · Z</label>
+        <label>Height · Z</label>
         <input id="H" type="number" value="77" step="1" min="1" />
       </div>
     </div>
 
     <label class="check">
       <input id="swap" type="checkbox" />
-      Диван повёрнут на 90° (длинная сторона вдоль Y)
+      Sofa rotated 90° (long side along Y)
     </label>
 
-    <h2 style="margin-top:18px">Модель интенсивности</h2>
+    <h2 style="margin-top:18px">Intensity model</h2>
     <label class="opt">
       <input type="radio" name="mode" value="A" checked />
       <span>
-        <span class="t">Масштабировать размеры источников — компенсация <code>×k²</code></span>
-        <span class="d">Размеры (SourceWidth/Radius) растут вместе с ригом. Тени сохраняют характер. Закон обратных квадратов работает строго для всех светов.</span>
+        <span class="t">Scale source sizes — compensation <code>×k²</code></span>
+        <span class="d">Source sizes (SourceWidth/Radius) grow with the rig. Shadows keep their character; the inverse-square law applies strictly to every light. Closest to the original look — recommended.</span>
       </span>
     </label>
     <label class="opt">
       <input type="radio" name="mode" value="B" />
       <span>
-        <span class="t">Сохранять размеры источников — компенсация <code>×k^p</code></span>
-        <span class="d">Размеры неизменны. Жёсткий key ≈ k², большие мягкие заливки мягче (~k^1.7) — ближняя зона, обратный квадрат «не работает».</span>
+        <span class="t">Keep source sizes — compensation <code>×k^p</code></span>
+        <span class="d">Sizes unchanged. Sharp key ≈ k², large soft fills are gentler (~k^1.7) — the near field, where inverse-square "doesn't hold".</span>
       </span>
     </label>
 
     <details>
-      <summary>Эталонные габариты рига (advanced)</summary>
+      <summary>Reference rig dimensions (advanced)</summary>
       <div class="grid3" style="margin-top:10px">
         <div><label>ref X</label><input id="rW" type="number" value="453" step="1" min="1" /></div>
         <div><label>ref Y</label><input id="rD" type="number" value="274" step="1" min="1" /></div>
         <div><label>ref Z</label><input id="rH" type="number" value="77" step="1" min="1" /></div>
       </div>
-      <p class="note">Это размеры дивана, под который риг настроен сейчас. При равенстве входных и эталонных габаритов вывод совпадает с исходным T3D 1:1.</p>
+      <p class="note">The sofa size the rig is tuned for right now. When the input equals the reference, the output matches the source T3D 1:1.</p>
     </details>
 
     <p class="note">
-      <b>Оси:</b> world&nbsp;X↔ширина(453), Y↔глубина(274), Z↔высота(77) — определено по заливке (SourceWidth&nbsp;500&nbsp;≈&nbsp;453).
-      Позиции масштабируются покоординатно; <b>AttenuationRadius</b> тянется за дистанцией; повороты не меняются.
+      <b>Axes:</b> world&nbsp;X↔width(453), Y↔depth(274), Z↔height(77) — inferred from the fill (SourceWidth&nbsp;500&nbsp;≈&nbsp;453).
+      Positions scale per-axis; <b>AttenuationRadius</b> follows the distance; rotations stay fixed.
     </p>
   </section>
 
   <!-- ── Output ─────────────────────────────── -->
   <section class="panel">
-    <h2>T3D для вставки в Unreal</h2>
+    <h2>T3D to paste into Unreal</h2>
     <div class="bar">
-      <button id="copy" class="btn">📋 Копировать</button>
-      <button id="reset" class="btn sec">Сброс</button>
-      <span id="flash" class="flash">Скопировано — Ctrl+V в видовом окне UE</span>
+      <button id="copy" class="btn">📋 Copy</button>
+      <button id="reset" class="btn sec">Reset</button>
+      <span id="flash" class="flash">Copied — Ctrl+V in the UE viewport</span>
     </div>
     <textarea id="out" spellcheck="false" readonly></textarea>
 
-    <h2 style="margin-top:16px">Расчёт по источникам</h2>
+    <h2 style="margin-top:16px">Per-light breakdown</h2>
     <table id="tbl">
       <thead>
-        <tr><th>Источник</th><th>тип</th><th>X</th><th>Y</th><th>Z</th><th>k</th><th>Интенс.</th><th>p</th></tr>
+        <tr><th>Light</th><th>type</th><th>X</th><th>Y</th><th>Z</th><th>k</th><th>Intensity</th><th>p</th></tr>
       </thead>
       <tbody></tbody>
     </table>
+    <p class="note"><b>p</b> — effective falloff exponent: Intensity ∝ k<sup>p</sup> (mode B). p ≈ 2 is inverse-square (small/sharp sources); p &lt; 2 is gentler (large soft sources, near field). Mode A always uses k² (p = 2).</p>
+  </section>
+
+  <!-- ── Top-view diagram ───────────────────── -->
+  <section class="panel diagram">
+    <h2>Top view — sofa &amp; lights</h2>
+    <svg id="diagram" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="legend">
+      <span class="it"><span class="sw" style="background:#ffcf5a"></span>key (spot)</span>
+      <span class="it"><span class="sw" style="background:#6db7ff"></span>fill (rect)</span>
+      <span class="it"><span class="sw" style="background:#c98bff"></span>left rim (spot)</span>
+      <span class="it"><span class="sw" style="background:#4fd1c5"></span>right rim (rect)</span>
+      <span class="it"><span class="sw" style="background:#7bd88f"></span>right bounce (rect)</span>
+      <span class="it" style="margin-left:auto">● spot cone · ▬ rect panel · arrow = aim · label = intensity · brighter glow = higher intensity</span>
+    </div>
   </section>
 
   <!-- ── Formula ────────────────────────────── -->
   <section class="panel formula">
-    <h2>Формула расчёта</h2>
+    <h2>Calculation formula</h2>
     <div class="fml">
-      <div class="lbl">1. Коэффициенты масштаба (эталон рига <span id="fREF">453 × 274 × 77</span>):</div>
+      <div class="lbl">1. Scale factors (reference rig <span id="fREF">453 × 274 × 77</span>):</div>
       <div class="eq"><span class="v">s<sub>X</sub></span> = W / <span id="fW1">453</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">s<sub>Y</sub></span> = D / <span id="fD1">274</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">s<sub>Z</sub></span> = H / <span id="fH1">77</span></div>
-      <div class="eq">поворот 90°:&nbsp;&nbsp;s<sub>X</sub> = D / <span id="fW2">453</span>,&nbsp;&nbsp;s<sub>Y</sub> = W / <span id="fD2">274</span></div>
+      <div class="eq">rotated 90°:&nbsp;&nbsp;s<sub>X</sub> = D / <span id="fW2">453</span>,&nbsp;&nbsp;s<sub>Y</sub> = W / <span id="fD2">274</span></div>
 
-      <div class="lbl">2. Новая позиция источника:</div>
+      <div class="lbl">2. New light position:</div>
       <div class="eq">X′ = X · s<sub>X</sub>&nbsp;&nbsp;&nbsp;&nbsp;Y′ = Y · s<sub>Y</sub>&nbsp;&nbsp;&nbsp;&nbsp;Z′ = Z · s<sub>Z</sub></div>
 
-      <div class="lbl">3. Изменение дистанции до дивана (своё для каждого света):</div>
+      <div class="lbl">3. Change in distance to the sofa (per light):</div>
       <div class="eq">d<sub>0</sub> = √(X² + Y² + Z²)&nbsp;&nbsp;&nbsp;&nbsp;d<sub>1</sub> = √(X′² + Y′² + Z′²)&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">k</span> = d<sub>1</sub> / d<sub>0</sub></div>
 
-      <div class="lbl">4. Эффективный радиус источника:</div>
+      <div class="lbl">4. Effective source radius:</div>
       <div class="eq">spot:&nbsp;&nbsp;R = SourceRadius&nbsp;&nbsp;&nbsp;&nbsp;rect:&nbsp;&nbsp;R = √(SourceWidth · SourceHeight / π)</div>
 
-      <div class="lbl">5. Режим A — размеры источников масштабируются (× k):</div>
+      <div class="lbl">5. Mode A — source sizes scale (× k):</div>
       <div class="eq"><span class="v">Intensity′ = Intensity · k²</span>&nbsp;&nbsp;&nbsp;&nbsp;SourceWidth/Height/Radius/BarnDoorLength · k</div>
 
-      <div class="lbl">5. Режим B — размеры источников неизменны:</div>
+      <div class="lbl">5. Mode B — source sizes fixed:</div>
       <div class="eq"><span class="v">Intensity′ = Intensity · (k²·d<sub>0</sub>² + R²) / (d<sub>0</sub>² + R²)</span>&nbsp;&nbsp;≈&nbsp;&nbsp;Intensity · k<sup>p</sup></div>
-      <div class="eq">p = 2·d<sub>0</sub>² / (d<sub>0</sub>² + R²)&nbsp;&nbsp;&nbsp;&nbsp;резкий key → p ≈ 2,&nbsp;&nbsp;мягкая заливка → p ≈ 1.7</div>
+      <div class="eq">p = 2·d<sub>0</sub>² / (d<sub>0</sub>² + R²)&nbsp;&nbsp;&nbsp;&nbsp;sharp key → p ≈ 2,&nbsp;&nbsp;soft fill → p ≈ 1.7</div>
 
-      <div class="lbl">6. Затухание и неизменные параметры:</div>
+      <div class="lbl">6. Attenuation &amp; unchanged params:</div>
       <div class="eq">AttenuationRadius′ = AttenuationRadius · k</div>
-      <div class="eq">повороты, цвет, температура — без изменений</div>
+      <div class="eq">rotations, color, temperature — unchanged</div>
     </div>
     <p class="note">
-      <b>Почему не «чистый» обратный квадрат:</b> у больших мягких источников (fill, left_rim)
-      R сравнимо с дистанцией — это ближняя зона, поэтому падение освещённости мягче k².
-      При входных габаритах = эталонным <code>k = 1</code> → вывод совпадает с исходным ригом 1:1.
+      <b>Why not a "pure" inverse square:</b> for large soft sources (fill, left_rim)
+      R is comparable to the distance — the near field — so illuminance falls off gentler than k².
+      When the input equals the reference, <code>k = 1</code> → the output matches the source rig 1:1.
     </p>
   </section>
 </main>
@@ -183,10 +203,10 @@
 <script>
 "use strict";
 
-/* ── Эталон (риг настроен под этот диван) ───────────────────────── */
+/* ── Reference (the rig is tuned for this sofa) ─────────────────── */
 const REF_DEFAULT = { W:453, D:274, H:77 };
 
-/* Базовые значения источников = ровно те, что в исходном T3D. */
+/* Base light values = exactly those in the source T3D. */
 const LIGHTS = {
   front_fill_lgt:   { type:"rect", pos:[0,696,52],            I:6.0,  w:500,        h:500,        barn:0,  atten:null },
   left_rim_lgt:     { type:"spot", pos:[-508,-200,242.441086],I:50.0, radius:256.0,               soft:25, atten:null },
@@ -195,7 +215,7 @@ const LIGHTS = {
   right_rim_lgt:    { type:"rect", pos:[349,91,63],           I:0.3,  w:91.440002,  h:60.900002,  barn:0,  atten:600 },
 };
 
-/* Исходный T3D — мутируем только числовые поля, структура остаётся 1:1. */
+/* Source T3D — only numeric fields are mutated; the structure stays 1:1. */
 const TEMPLATE = `Begin Map
    Begin Level
       Begin Actor Class=/Script/Engine.RectLight Name=RectLight_1 Archetype="/Script/Engine.RectLight'/Script/Engine.Default__RectLight'" ExportPath="/Script/Engine.RectLight'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_1'"
@@ -336,29 +356,29 @@ Begin Surface
 End Surface
 End Map`;
 
-/* ── Логика ─────────────────────────────────────────────────────── */
+/* ── Logic ──────────────────────────────────────────────────────── */
 const fmt = x => Number(x).toFixed(6);
 const hyp = (a,b,c) => Math.sqrt(a*a + b*b + c*c);
 
 function computeAll(W, D, H, mode, swap, ref){
-  const sX = (swap ? D : W) / ref.W;   // scale на мировую X (риг: 453 вдоль X)
-  const sY = (swap ? W : D) / ref.D;   // scale на мировую Y (риг: 274 вдоль Y)
-  const sZ = H / ref.H;                // scale на мировую Z (высота)
+  const sX = (swap ? D : W) / ref.W;   // scale on world X (rig: 453 along X)
+  const sY = (swap ? W : D) / ref.D;   // scale on world Y (rig: 274 along Y)
+  const sZ = H / ref.H;                // scale on world Z (height)
   const res = {};
   for (const [name, L] of Object.entries(LIGHTS)){
     const [x, y, z] = L.pos;
     const npos = [x * sX, y * sY, z * sZ];
     const d0 = hyp(x, y, z);
     const d1 = hyp(npos[0], npos[1], npos[2]);
-    const k  = d1 / d0;                                   // рост дистанции для этого света
-    const R  = L.type === "spot" ? L.radius : Math.sqrt(L.w * L.h / Math.PI); // эфф. радиус источника
-    const p  = 2 * d0 * d0 / (d0 * d0 + R * R);           // эфф. степень падения (info)
+    const k  = d1 / d0;                                   // distance growth for this light
+    const R  = L.type === "spot" ? L.radius : Math.sqrt(L.w * L.h / Math.PI); // effective source radius
+    const p  = 2 * d0 * d0 / (d0 * d0 + R * R);           // effective falloff exponent (info)
 
     let I_new, sizeK;
-    if (mode === "A"){            // масштабируем размеры → строгий k²
+    if (mode === "A"){            // scale sizes → strict k²
       I_new = L.I * k * k;
       sizeK = k;
-    } else {                      // размеры фиксированы → k^p (точная форма)
+    } else {                      // sizes fixed → k^p (exact form)
       I_new = L.I * (k * k * d0 * d0 + R * R) / (d0 * d0 + R * R);
       sizeK = 1;
     }
@@ -398,7 +418,7 @@ function generateT3D(res){
   });
 }
 
-/* Экспорт для node-тестов (без влияния на браузер). */
+/* Export for node tests (no effect in the browser). */
 if (typeof module !== "undefined" && module.exports){
   module.exports = { REF_DEFAULT, LIGHTS, TEMPLATE, computeAll, generateT3D, fmt, hyp };
 }
@@ -407,6 +427,73 @@ if (typeof module !== "undefined" && module.exports){
 if (typeof document !== "undefined"){
   const $ = id => document.getElementById(id);
   const num = (id, def) => { const v = parseFloat($(id).value); return (isFinite(v) && v > 0) ? v : def; };
+
+  /* Per-light visual metadata for the top view (yaw/cone from the T3D, role color). */
+  const VIZ = {
+    front_fill_lgt:   { yaw:-90,  cone:null, label:"fill",   color:"#6db7ff" },
+    left_rim_lgt:     { yaw:4,    cone:90,   label:"L rim",  color:"#c98bff" },
+    main_key_lgt:     { yaw:-11,  cone:37,   label:"key",    color:"#ffcf5a" },
+    right_bounce_lgt: { yaw:-140, cone:null, label:"bounce", color:"#7bd88f" },
+    right_rim_lgt:    { yaw:180,  cone:null, label:"R rim",  color:"#4fd1c5" },
+  };
+
+  // Top-down schematic. World coords map straight to the viewBox; +Y points down
+  // (toward the camera/front). Sizes are in world units so it scales with the view.
+  function renderDiagram(res, sofaX, sofaY, H){
+    const svg = $("diagram");
+    if (!svg) return;
+    const names = Object.keys(res);
+
+    let minX = -sofaX/2, maxX = sofaX/2, minY = -sofaY/2, maxY = sofaY/2;
+    for (const n of names){ const [x,y] = res[n].pos;
+      minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y); }
+    const span = Math.max(maxX-minX, maxY-minY) || 1, pad = span*0.10 + 60;
+    minX-=pad; maxX+=pad; minY-=pad; maxY+=pad;
+    const vbW = maxX-minX, vbH = maxY-minY, u = Math.max(vbW, vbH);
+    svg.setAttribute("viewBox", `${minX} ${minY} ${vbW} ${vbH}`);
+
+    const fs = u*0.024, sw = u*0.0038, dot = u*0.014;
+    const maxI = Math.max(...names.map(n => res[n].intensity), 1e-6);
+    const hx = sofaX/2, hy = sofaY/2, rx = Math.min(sofaX,sofaY)*0.08;
+
+    let cones = "", marks = "";   // cones go behind the sofa, marks/labels on top
+    for (const n of names){
+      const r = res[n], v = VIZ[n] || { yaw:0, cone:null, color:"#cccccc", label:n };
+      const [x,y] = r.pos;
+      const a = v.yaw * Math.PI/180, fx = Math.cos(a), fy = Math.sin(a);
+      const thr = Math.hypot(x,y) || u*0.3, len = Math.max(thr*0.9, u*0.12);
+      const op = (0.10 + 0.28*Math.sqrt(r.intensity/maxI)).toFixed(3);
+      const half = (r.type==="spot" ? (v.cone||30) : 26) * Math.PI/180;
+      const cl = (r.type==="spot" ? len : len*0.5);
+      const e1x = fx*Math.cos(half)-fy*Math.sin(half), e1y = fx*Math.sin(half)+fy*Math.cos(half);
+      const e2x = fx*Math.cos(-half)-fy*Math.sin(-half), e2y = fx*Math.sin(-half)+fy*Math.cos(-half);
+
+      // cone (spot) / soft fan (rect)
+      cones += `<path d="M ${x} ${y} L ${x+e1x*cl} ${y+e1y*cl} L ${x+e2x*cl} ${y+e2y*cl} Z" fill="${v.color}" opacity="${op}"/>`;
+      // aim arrow + icon (spot = bulb, rect = panel bar perpendicular to the aim) + label
+      marks += `<line x1="${x}" y1="${y}" x2="${x+fx*len*0.45}" y2="${y+fy*len*0.45}" stroke="${v.color}" stroke-width="${sw}"/>`;
+      if (r.type==="spot"){
+        marks += `<circle cx="${x}" cy="${y}" r="${dot}" fill="${v.color}" stroke="#0f1115" stroke-width="${sw*0.6}"/>`;
+      } else {
+        const pw = Math.min(r.w||100, u*0.20)/2, px=-fy, py=fx;
+        marks += `<line x1="${x-px*pw}" y1="${y-py*pw}" x2="${x+px*pw}" y2="${y+py*pw}" stroke="${v.color}" stroke-width="${sw*2.6}" stroke-linecap="round"/>`;
+      }
+      marks += `<text x="${x}" y="${y - dot*1.7}" fill="${v.color}" font-size="${fs}" text-anchor="middle" font-family="system-ui">${v.label} · ${r.intensity.toFixed(1)}</text>`;
+    }
+
+    const axes =
+      `<line x1="${minX}" y1="0" x2="${maxX}" y2="0" stroke="#23262d" stroke-width="${sw*0.8}"/>` +
+      `<line x1="0" y1="${minY}" x2="0" y2="${maxY}" stroke="#23262d" stroke-width="${sw*0.8}"/>`;
+    const sofa =
+      `<rect x="${-hx}" y="${-hy}" width="${sofaX}" height="${sofaY}" rx="${rx}" fill="#2a2f3a" stroke="#566173" stroke-width="${sw*1.4}"/>` +
+      `<rect x="${-hx}" y="${-hy}" width="${sofaX}" height="${Math.min(sofaY*0.24, u*0.05)}" rx="${rx*0.6}" fill="#3a4150"/>` +
+      `<text x="0" y="${hy + fs*1.5}" fill="#9aa1ad" font-size="${fs}" text-anchor="middle" font-family="system-ui">sofa  ${Math.round(sofaX)}×${Math.round(sofaY)}×${Math.round(H)}</text>`;
+    const hints =
+      `<text x="0" y="${maxY - fs*0.5}" fill="#6b7280" font-size="${fs*0.9}" text-anchor="middle" font-family="system-ui">▼ front / camera (+Y)</text>` +
+      `<text x="${maxX - fs*0.4}" y="${-fs*0.5}" fill="#6b7280" font-size="${fs*0.9}" text-anchor="end" font-family="system-ui">+X →</text>`;
+
+    svg.innerHTML = axes + cones + sofa + marks + hints;
+  }
 
   function setRefLabels(ref){
     const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -423,6 +510,9 @@ if (typeof document !== "undefined"){
 
     const res = computeAll(W, D, H, mode, swap, ref);
     $("out").value = generateT3D(res);
+
+    const sofaX = swap ? D : W, sofaY = swap ? W : D;
+    renderDiagram(res, sofaX, sofaY, H);
 
     const body = $("tbl").querySelector("tbody");
     body.innerHTML = "";
