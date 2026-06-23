@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sectional — Light Rig Scaler</title>
+<style>
+  :root{
+    --bg:#16181c; --panel:#1e2127; --panel2:#23262d; --line:#2e323b;
+    --txt:#e6e8ec; --muted:#9aa1ad; --accent:#36c2c8; --accent2:#5aa0ff;
+    --warn:#e0a23a; --ok:#5ec27a; --mono:ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.45}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{margin:0;font-size:18px;letter-spacing:.2px}
+  header p{margin:6px 0 0;color:var(--muted);font-size:13px}
+  main{display:grid;grid-template-columns:380px 1fr;gap:18px;padding:18px 24px;max-width:1280px}
+  @media (max-width:880px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .panel h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  input[type=number]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:9px 10px;font-size:15px;font-family:var(--mono)}
+  input[type=number]:focus{outline:none;border-color:var(--accent)}
+  .row{margin-bottom:14px}
+  .opt{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);
+    border-radius:8px;margin-bottom:8px;cursor:pointer;background:var(--panel2)}
+  .opt:hover{border-color:var(--accent)}
+  .opt input{margin-top:2px}
+  .opt .t{font-size:13px}
+  .opt .d{font-size:12px;color:var(--muted);margin-top:2px}
+  .check{display:flex;gap:9px;align-items:center;font-size:13px;color:var(--txt);margin-top:6px;cursor:pointer}
+  .btn{appearance:none;border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:600;
+    cursor:pointer;background:var(--accent);color:#04201f}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.sec{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+  .bar{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+  .flash{font-size:13px;color:var(--ok);opacity:0;transition:opacity .2s}
+  .flash.show{opacity:1}
+  textarea{width:100%;height:300px;background:#0f1115;border:1px solid var(--line);color:#cdd3db;
+    border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px;resize:vertical;white-space:pre}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono)}
+  th{color:var(--muted);font-weight:600;text-align:right}
+  td:first-child,th:first-child{text-align:left}
+  .tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:5px;background:var(--panel2);
+    color:var(--muted);border:1px solid var(--line)}
+  .note{font-size:12px;color:var(--muted);margin-top:12px;border-left:2px solid var(--line);padding-left:10px}
+  .note b{color:var(--txt)}
+  details{margin-top:10px}
+  summary{cursor:pointer;font-size:12px;color:var(--accent2)}
+  code{font-family:var(--mono);color:var(--accent)}
+  .formula{grid-column:1 / -1}
+  .fml{background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:14px 16px;
+    font-family:var(--mono);font-size:13px;color:#cdd3db;overflow-x:auto}
+  .fml .lbl{color:var(--muted);font-family:system-ui,sans-serif;font-size:12px;margin:14px 0 6px}
+  .fml .lbl:first-child{margin-top:0}
+  .fml .eq{margin:4px 0;white-space:nowrap}
+  .fml .v{color:var(--accent)}
+  .fml sub,.fml sup{font-size:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sectional — Light Rig Scaler</h1>
+  <p>Введите габариты дивана → получите готовый T3D пяти источников света. Кнопка «Копировать» → в видовом окне Unreal нажмите <b>Ctrl + V</b>.</p>
+</header>
+
+<main>
+  <!-- ── Controls ───────────────────────────── -->
+  <section class="panel">
+    <h2>Габариты дивана (см)</h2>
+    <div class="grid3">
+      <div>
+        <label>Ширина · X</label>
+        <input id="W" type="number" value="453" step="1" min="1" />
+      </div>
+      <div>
+        <label>Глубина · Y</label>
+        <input id="D" type="number" value="274" step="1" min="1" />
+      </div>
+      <div>
+        <label>Высота · Z</label>
+        <input id="H" type="number" value="77" step="1" min="1" />
+      </div>
+    </div>
+
+    <label class="check">
+      <input id="swap" type="checkbox" />
+      Диван повёрнут на 90° (длинная сторона вдоль Y)
+    </label>
+
+    <h2 style="margin-top:18px">Модель интенсивности</h2>
+    <label class="opt">
+      <input type="radio" name="mode" value="A" checked />
+      <span>
+        <span class="t">Масштабировать размеры источников — компенсация <code>×k²</code></span>
+        <span class="d">Размеры (SourceWidth/Radius) растут вместе с ригом. Тени сохраняют характер. Закон обратных квадратов работает строго для всех светов.</span>
+      </span>
+    </label>
+    <label class="opt">
+      <input type="radio" name="mode" value="B" />
+      <span>
+        <span class="t">Сохранять размеры источников — компенсация <code>×k^p</code></span>
+        <span class="d">Размеры неизменны. Жёсткий key ≈ k², большие мягкие заливки мягче (~k^1.7) — ближняя зона, обратный квадрат «не работает».</span>
+      </span>
+    </label>
+
+    <details>
+      <summary>Эталонные габариты рига (advanced)</summary>
+      <div class="grid3" style="margin-top:10px">
+        <div><label>ref X</label><input id="rW" type="number" value="453" step="1" min="1" /></div>
+        <div><label>ref Y</label><input id="rD" type="number" value="274" step="1" min="1" /></div>
+        <div><label>ref Z</label><input id="rH" type="number" value="77" step="1" min="1" /></div>
+      </div>
+      <p class="note">Это размеры дивана, под который риг настроен сейчас. При равенстве входных и эталонных габаритов вывод совпадает с исходным T3D 1:1.</p>
+    </details>
+
+    <p class="note">
+      <b>Оси:</b> world&nbsp;X↔ширина(453), Y↔глубина(274), Z↔высота(77) — определено по заливке (SourceWidth&nbsp;500&nbsp;≈&nbsp;453).
+      Позиции масштабируются покоординатно; <b>AttenuationRadius</b> тянется за дистанцией; повороты не меняются.
+    </p>
+  </section>
+
+  <!-- ── Output ─────────────────────────────── -->
+  <section class="panel">
+    <h2>T3D для вставки в Unreal</h2>
+    <div class="bar">
+      <button id="copy" class="btn">📋 Копировать</button>
+      <button id="reset" class="btn sec">Сброс</button>
+      <span id="flash" class="flash">Скопировано — Ctrl+V в видовом окне UE</span>
+    </div>
+    <textarea id="out" spellcheck="false" readonly></textarea>
+
+    <h2 style="margin-top:16px">Расчёт по источникам</h2>
+    <table id="tbl">
+      <thead>
+        <tr><th>Источник</th><th>тип</th><th>X</th><th>Y</th><th>Z</th><th>k</th><th>Интенс.</th><th>p</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- ── Formula ────────────────────────────── -->
+  <section class="panel formula">
+    <h2>Формула расчёта</h2>
+    <div class="fml">
+      <div class="lbl">1. Коэффициенты масштаба (эталон рига <span id="fREF">453 × 274 × 77</span>):</div>
+      <div class="eq"><span class="v">s<sub>X</sub></span> = W / <span id="fW1">453</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">s<sub>Y</sub></span> = D / <span id="fD1">274</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">s<sub>Z</sub></span> = H / <span id="fH1">77</span></div>
+      <div class="eq">поворот 90°:&nbsp;&nbsp;s<sub>X</sub> = D / <span id="fW2">453</span>,&nbsp;&nbsp;s<sub>Y</sub> = W / <span id="fD2">274</span></div>
+
+      <div class="lbl">2. Новая позиция источника:</div>
+      <div class="eq">X′ = X · s<sub>X</sub>&nbsp;&nbsp;&nbsp;&nbsp;Y′ = Y · s<sub>Y</sub>&nbsp;&nbsp;&nbsp;&nbsp;Z′ = Z · s<sub>Z</sub></div>
+
+      <div class="lbl">3. Изменение дистанции до дивана (своё для каждого света):</div>
+      <div class="eq">d<sub>0</sub> = √(X² + Y² + Z²)&nbsp;&nbsp;&nbsp;&nbsp;d<sub>1</sub> = √(X′² + Y′² + Z′²)&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">k</span> = d<sub>1</sub> / d<sub>0</sub></div>
+
+      <div class="lbl">4. Эффективный радиус источника:</div>
+      <div class="eq">spot:&nbsp;&nbsp;R = SourceRadius&nbsp;&nbsp;&nbsp;&nbsp;rect:&nbsp;&nbsp;R = √(SourceWidth · SourceHeight / π)</div>
+
+      <div class="lbl">5. Режим A — размеры источников масштабируются (× k):</div>
+      <div class="eq"><span class="v">Intensity′ = Intensity · k²</span>&nbsp;&nbsp;&nbsp;&nbsp;SourceWidth/Height/Radius/BarnDoorLength · k</div>
+
+      <div class="lbl">5. Режим B — размеры источников неизменны:</div>
+      <div class="eq"><span class="v">Intensity′ = Intensity · (k²·d<sub>0</sub>² + R²) / (d<sub>0</sub>² + R²)</span>&nbsp;&nbsp;≈&nbsp;&nbsp;Intensity · k<sup>p</sup></div>
+      <div class="eq">p = 2·d<sub>0</sub>² / (d<sub>0</sub>² + R²)&nbsp;&nbsp;&nbsp;&nbsp;резкий key → p ≈ 2,&nbsp;&nbsp;мягкая заливка → p ≈ 1.7</div>
+
+      <div class="lbl">6. Затухание и неизменные параметры:</div>
+      <div class="eq">AttenuationRadius′ = AttenuationRadius · k</div>
+      <div class="eq">повороты, цвет, температура — без изменений</div>
+    </div>
+    <p class="note">
+      <b>Почему не «чистый» обратный квадрат:</b> у больших мягких источников (fill, left_rim)
+      R сравнимо с дистанцией — это ближняя зона, поэтому падение освещённости мягче k².
+      При входных габаритах = эталонным <code>k = 1</code> → вывод совпадает с исходным ригом 1:1.
+    </p>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+/* ── Эталон (риг настроен под этот диван) ───────────────────────── */
+const REF_DEFAULT = { W:453, D:274, H:77 };
+
+/* Базовые значения источников = ровно те, что в исходном T3D. */
+const LIGHTS = {
+  front_fill_lgt:   { type:"rect", pos:[0,696,52],            I:6.0,  w:500,        h:500,        barn:0,  atten:null },
+  left_rim_lgt:     { type:"spot", pos:[-508,-200,242.441086],I:50.0, radius:256.0,               soft:25, atten:null },
+  main_key_lgt:     { type:"spot", pos:[-445,130,232.610977], I:45.0, radius:52.479965,           soft:null, atten:null },
+  right_bounce_lgt: { type:"rect", pos:[372,240,150],         I:0.5,  w:256,        h:256,        barn:25, atten:600 },
+  right_rim_lgt:    { type:"rect", pos:[349,91,63],           I:0.3,  w:91.440002,  h:60.900002,  barn:0,  atten:600 },
+};
+
+/* Исходный T3D — мутируем только числовые поля, структура остаётся 1:1. */
+const TEMPLATE = `Begin Map
+   Begin Level
+      Begin Actor Class=/Script/Engine.RectLight Name=RectLight_1 Archetype="/Script/Engine.RectLight'/Script/Engine.Default__RectLight'" ExportPath="/Script/Engine.RectLight'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_1'"
+         Begin Object Class=/Script/Engine.RectLightComponent Name="LightComponent0" Archetype="/Script/Engine.RectLightComponent'/Script/Engine.Default__RectLight:LightComponent0'" ExportPath="/Script/Engine.RectLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_1.LightComponent0'"
+         End Object
+         Begin Object Name="LightComponent0" ExportPath="/Script/Engine.RectLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_1.LightComponent0'"
+            SourceWidth=500.000000
+            SourceHeight=500.000000
+            BarnDoorAngle=0.000000
+            BarnDoorLength=0.000000
+            IntensityUnits=Candelas
+            bUseTemperature=True
+            Intensity=6.000000
+            RelativeLocation=(X=0.000000,Y=696.000000,Z=52.000000)
+            RelativeRotation=(Pitch=4.000000,Yaw=-90.000000,Roll=0.000000)
+            Mobility=Movable
+         End Object
+         RectLightComponent="LightComponent0"
+         LightComponent="LightComponent0"
+         SpawnCollisionHandlingMethod=AlwaysSpawn
+         RootComponent="LightComponent0"
+         ActorLabel="front_fill_lgt"
+         FolderPath="Lights"
+      End Actor
+      Begin Actor Class=/Script/Engine.SpotLight Name=SpotLight_2 Archetype="/Script/Engine.SpotLight'/Script/Engine.Default__SpotLight'" ExportPath="/Script/Engine.SpotLight'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_2'"
+         Begin Object Class=/Script/Engine.SpotLightComponent Name="LightComponent0" Archetype="/Script/Engine.SpotLightComponent'/Script/Engine.Default__SpotLight:LightComponent0'" ExportPath="/Script/Engine.SpotLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_2.LightComponent0'"
+         End Object
+         Begin Object Class=/Script/Engine.ArrowComponent Name="ArrowComponent0" Archetype="/Script/Engine.ArrowComponent'/Script/Engine.Default__SpotLight:ArrowComponent0'" ExportPath="/Script/Engine.ArrowComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_2.ArrowComponent0'"
+         End Object
+         Begin Object Name="LightComponent0" ExportPath="/Script/Engine.SpotLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_2.LightComponent0'"
+            OuterConeAngle=90.000000
+            SourceRadius=256.000000
+            SoftSourceRadius=25.000000
+            IntensityUnits=Candelas
+            bUseTemperature=True
+            LightingChannels=(bChannel1=True)
+            Intensity=50.000000
+            CastRaytracedShadow=Enabled
+            SamplesPerPixel=8
+            RelativeLocation=(X=-508.000000,Y=-200.000000,Z=242.441086)
+            RelativeRotation=(Pitch=-43.000000,Yaw=4.000000,Roll=0.382830)
+            bAbsoluteScale=True
+            Mobility=Movable
+         End Object
+         Begin Object Name="ArrowComponent0" ExportPath="/Script/Engine.ArrowComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_2.ArrowComponent0'"
+            AttachParent="LightComponent0"
+         End Object
+         SpotLightComponent="LightComponent0"
+         LightComponent="LightComponent0"
+         SpawnCollisionHandlingMethod=AlwaysSpawn
+         RootComponent="LightComponent0"
+         ActorLabel="left_rim_lgt"
+         FolderPath="Lights"
+      End Actor
+      Begin Actor Class=/Script/Engine.SpotLight Name=SpotLight_1 Archetype="/Script/Engine.SpotLight'/Script/Engine.Default__SpotLight'" ExportPath="/Script/Engine.SpotLight'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_1'"
+         Begin Object Class=/Script/Engine.SpotLightComponent Name="LightComponent0" Archetype="/Script/Engine.SpotLightComponent'/Script/Engine.Default__SpotLight:LightComponent0'" ExportPath="/Script/Engine.SpotLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_1.LightComponent0'"
+         End Object
+         Begin Object Class=/Script/Engine.ArrowComponent Name="ArrowComponent0" Archetype="/Script/Engine.ArrowComponent'/Script/Engine.Default__SpotLight:ArrowComponent0'" ExportPath="/Script/Engine.ArrowComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_1.ArrowComponent0'"
+         End Object
+         Begin Object Name="LightComponent0" ExportPath="/Script/Engine.SpotLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_1.LightComponent0'"
+            InnerConeAngle=1.000000
+            OuterConeAngle=37.000000
+            SourceRadius=52.479965
+            IntensityUnits=Candelas
+            bUseTemperature=True
+            LightingChannels=(bChannel1=True)
+            Intensity=45.000000
+            CastRaytracedShadow=Enabled
+            SamplesPerPixel=8
+            RelativeLocation=(X=-445.000000,Y=130.000000,Z=232.610977)
+            RelativeRotation=(Pitch=-25.000000,Yaw=-11.000000,Roll=0.000000)
+            Mobility=Movable
+         End Object
+         Begin Object Name="ArrowComponent0" ExportPath="/Script/Engine.ArrowComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.SpotLight_1.ArrowComponent0'"
+            AttachParent="LightComponent0"
+         End Object
+         SpotLightComponent="LightComponent0"
+         LightComponent="LightComponent0"
+         SpawnCollisionHandlingMethod=AlwaysSpawn
+         RootComponent="LightComponent0"
+         ActorLabel="main_key_lgt"
+         FolderPath="Lights"
+      End Actor
+      Begin Actor Class=/Script/Engine.RectLight Name=RectLight_5 Archetype="/Script/Engine.RectLight'/Script/Engine.Default__RectLight'" ExportPath="/Script/Engine.RectLight'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_5'"
+         Begin Object Class=/Script/Engine.RectLightComponent Name="LightComponent0" Archetype="/Script/Engine.RectLightComponent'/Script/Engine.Default__RectLight:LightComponent0'" ExportPath="/Script/Engine.RectLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_5.LightComponent0'"
+         End Object
+         Begin Object Name="LightComponent0" ExportPath="/Script/Engine.RectLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_5.LightComponent0'"
+            SourceWidth=256.000000
+            SourceHeight=256.000000
+            BarnDoorAngle=25.000000
+            BarnDoorLength=25.000000
+            IntensityUnits=Candelas
+            AttenuationRadius=600.000000
+            Temperature=6000.000000
+            bUseTemperature=True
+            Intensity=0.500000
+            CastRaytracedShadow=Enabled
+            SamplesPerPixel=4
+            RelativeLocation=(X=372.000000,Y=240.000000,Z=150.000000)
+            RelativeRotation=(Pitch=0.000000,Yaw=-140.000000,Roll=0.000000)
+            Mobility=Movable
+         End Object
+         RectLightComponent="LightComponent0"
+         LightComponent="LightComponent0"
+         SpawnCollisionHandlingMethod=AlwaysSpawn
+         RootComponent="LightComponent0"
+         ActorLabel="right_bounce_lgt"
+         FolderPath="Lights"
+      End Actor
+      Begin Actor Class=/Script/Engine.RectLight Name=RectLight_2 Archetype="/Script/Engine.RectLight'/Script/Engine.Default__RectLight'" ExportPath="/Script/Engine.RectLight'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_2'"
+         Begin Object Class=/Script/Engine.RectLightComponent Name="LightComponent0" Archetype="/Script/Engine.RectLightComponent'/Script/Engine.Default__RectLight:LightComponent0'" ExportPath="/Script/Engine.RectLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_2.LightComponent0'"
+         End Object
+         Begin Object Name="LightComponent0" ExportPath="/Script/Engine.RectLightComponent'/Game/LightRig/INDOOR_SECTIONAL_FABRIC_LIGHTING_V2.INDOOR_SECTIONAL_FABRIC_LIGHTING_V2:PersistentLevel.RectLight_2.LightComponent0'"
+            SourceWidth=91.440002
+            SourceHeight=60.900002
+            BarnDoorAngle=0.000000
+            BarnDoorLength=0.000000
+            IntensityUnits=Candelas
+            AttenuationRadius=600.000000
+            Temperature=6000.000000
+            bUseTemperature=True
+            Intensity=0.300000
+            CastRaytracedShadow=Enabled
+            SamplesPerPixel=4
+            RelativeLocation=(X=349.000000,Y=91.000000,Z=63.000000)
+            RelativeRotation=(Pitch=0.000000,Yaw=180.000000,Roll=0.000000)
+            Mobility=Movable
+         End Object
+         RectLightComponent="LightComponent0"
+         LightComponent="LightComponent0"
+         SpawnCollisionHandlingMethod=AlwaysSpawn
+         RootComponent="LightComponent0"
+         ActorLabel="right_rim_lgt"
+         FolderPath="Lights"
+      End Actor
+   End Level
+Begin Surface
+End Surface
+End Map`;
+
+/* ── Логика ─────────────────────────────────────────────────────── */
+const fmt = x => Number(x).toFixed(6);
+const hyp = (a,b,c) => Math.sqrt(a*a + b*b + c*c);
+
+function computeAll(W, D, H, mode, swap, ref){
+  const sX = (swap ? D : W) / ref.W;   // scale на мировую X (риг: 453 вдоль X)
+  const sY = (swap ? W : D) / ref.D;   // scale на мировую Y (риг: 274 вдоль Y)
+  const sZ = H / ref.H;                // scale на мировую Z (высота)
+  const res = {};
+  for (const [name, L] of Object.entries(LIGHTS)){
+    const [x, y, z] = L.pos;
+    const npos = [x * sX, y * sY, z * sZ];
+    const d0 = hyp(x, y, z);
+    const d1 = hyp(npos[0], npos[1], npos[2]);
+    const k  = d1 / d0;                                   // рост дистанции для этого света
+    const R  = L.type === "spot" ? L.radius : Math.sqrt(L.w * L.h / Math.PI); // эфф. радиус источника
+    const p  = 2 * d0 * d0 / (d0 * d0 + R * R);           // эфф. степень падения (info)
+
+    let I_new, sizeK;
+    if (mode === "A"){            // масштабируем размеры → строгий k²
+      I_new = L.I * k * k;
+      sizeK = k;
+    } else {                      // размеры фиксированы → k^p (точная форма)
+      I_new = L.I * (k * k * d0 * d0 + R * R) / (d0 * d0 + R * R);
+      sizeK = 1;
+    }
+
+    const r = { type:L.type, pos:npos, intensity:I_new, k, p, I0:L.I,
+                atten: L.atten != null ? L.atten * k : null };
+    if (L.type === "rect"){
+      r.w = L.w * sizeK; r.h = L.h * sizeK; r.barn = (L.barn || 0) * sizeK;
+    } else {
+      r.radius = L.radius * sizeK; r.soft = L.soft != null ? L.soft * sizeK : null;
+    }
+    res[name] = r;
+  }
+  return res;
+}
+
+function generateT3D(res){
+  return TEMPLATE.replace(/Begin Actor[\s\S]*?End Actor/g, block => {
+    const m = block.match(/ActorLabel="([^"]+)"/);
+    if (!m || !res[m[1]]) return block;
+    const r = res[m[1]];
+    block = block.replace(/^(\s*)RelativeLocation=\([^)]*\)/m,
+      `$1RelativeLocation=(X=${fmt(r.pos[0])},Y=${fmt(r.pos[1])},Z=${fmt(r.pos[2])})`);
+    block = block.replace(/^(\s*)Intensity=.*$/m, `$1Intensity=${fmt(r.intensity)}`);
+    if (r.type === "rect"){
+      block = block.replace(/^(\s*)SourceWidth=.*$/m,  `$1SourceWidth=${fmt(r.w)}`);
+      block = block.replace(/^(\s*)SourceHeight=.*$/m, `$1SourceHeight=${fmt(r.h)}`);
+      block = block.replace(/^(\s*)BarnDoorLength=.*$/m, `$1BarnDoorLength=${fmt(r.barn)}`);
+    } else {
+      block = block.replace(/^(\s*)SourceRadius=.*$/m, `$1SourceRadius=${fmt(r.radius)}`);
+      if (r.soft != null)
+        block = block.replace(/^(\s*)SoftSourceRadius=.*$/m, `$1SoftSourceRadius=${fmt(r.soft)}`);
+    }
+    if (r.atten != null)
+      block = block.replace(/^(\s*)AttenuationRadius=.*$/m, `$1AttenuationRadius=${fmt(r.atten)}`);
+    return block;
+  });
+}
+
+/* Экспорт для node-тестов (без влияния на браузер). */
+if (typeof module !== "undefined" && module.exports){
+  module.exports = { REF_DEFAULT, LIGHTS, TEMPLATE, computeAll, generateT3D, fmt, hyp };
+}
+
+/* ── UI ─────────────────────────────────────────────────────────── */
+if (typeof document !== "undefined"){
+  const $ = id => document.getElementById(id);
+  const num = (id, def) => { const v = parseFloat($(id).value); return (isFinite(v) && v > 0) ? v : def; };
+
+  function setRefLabels(ref){
+    const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+    set("fW1", ref.W); set("fW2", ref.W); set("fD1", ref.D); set("fD2", ref.D); set("fH1", ref.H);
+    set("fREF", `${ref.W} × ${ref.D} × ${ref.H}`);
+  }
+
+  function render(){
+    const ref = { W:num("rW",453), D:num("rD",274), H:num("rH",77) };
+    setRefLabels(ref);
+    const W = num("W", ref.W), D = num("D", ref.D), H = num("H", ref.H);
+    const mode = document.querySelector('input[name=mode]:checked').value;
+    const swap = $("swap").checked;
+
+    const res = computeAll(W, D, H, mode, swap, ref);
+    $("out").value = generateT3D(res);
+
+    const body = $("tbl").querySelector("tbody");
+    body.innerHTML = "";
+    for (const [name, r] of Object.entries(res)){
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        `<td>${name.replace(/_lgt$/,"")}</td>` +
+        `<td><span class="tag">${r.type}</span></td>` +
+        `<td>${r.pos[0].toFixed(1)}</td><td>${r.pos[1].toFixed(1)}</td><td>${r.pos[2].toFixed(1)}</td>` +
+        `<td>${r.k.toFixed(3)}</td>` +
+        `<td>${r.intensity.toFixed(3)} <span class="tag">${r.I0}</span></td>` +
+        `<td>${(mode==="A"?2:r.p).toFixed(2)}</td>`;
+      body.appendChild(tr);
+    }
+  }
+
+  async function copyOut(){
+    const text = $("out").value;
+    try { await navigator.clipboard.writeText(text); }
+    catch(e){ $("out").removeAttribute("readonly"); $("out").select();
+              document.execCommand("copy"); $("out").setAttribute("readonly",""); }
+    const f = $("flash"); f.classList.add("show"); setTimeout(()=>f.classList.remove("show"), 1800);
+  }
+
+  document.querySelectorAll("input").forEach(el => el.addEventListener("input", render));
+  $("copy").addEventListener("click", copyOut);
+  $("reset").addEventListener("click", () => {
+    $("W").value=453; $("D").value=274; $("H").value=77;
+    $("rW").value=453; $("rD").value=274; $("rH").value=77;
+    $("swap").checked=false; document.querySelector('input[name=mode][value=A]').checked=true;
+    render();
+  });
+  render();
+}
+</script>
+</body>
+</html>
