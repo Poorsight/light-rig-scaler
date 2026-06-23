@@ -1,0 +1,11 @@
+{
+  "name": "light-rig-scaler",
+  "version": "1.0.0",
+  "description": "Scale an Unreal Engine light rig to a sofa's dimensions and generate paste-ready T3D.",
+  "private": true,
+  "scripts": {
+    "test": "node test/sanity.cjs",
+    "start": "npx serve . -l 5500"
+  },
+  "license": "UNLICENSED"
+}
