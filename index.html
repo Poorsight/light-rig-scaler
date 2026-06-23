@@ -85,6 +85,29 @@
   .seg input{display:none}
   .seg label{padding:6px 11px;font-size:12px;cursor:pointer;color:var(--muted);margin:0}
   .seg input:checked + label{background:var(--accent);color:#04201f}
+  /* polish */
+  main{margin:0 auto}
+  .panel{border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.22)}
+  .btn{transition:filter .12s, transform .04s}
+  .btn:active{transform:translateY(1px)}
+  input[type=number],select,.ibtn,textarea{transition:border-color .12s}
+  header{background:linear-gradient(180deg,#21242b,var(--panel))}
+  /* collapsibles */
+  summary{list-style:none}
+  summary::-webkit-details-marker{display:none}
+  details.mini{margin-top:10px}
+  details.mini>summary{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--accent2)}
+  details.mini>summary::before{content:"▸";font-size:10px;transition:transform .15s}
+  details.mini[open]>summary::before{transform:rotate(90deg)}
+  details.mini .note{margin-top:8px}
+  details.sub{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+  details.sub>summary{display:flex;align-items:center;gap:8px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  details.sub>summary::before{content:"▸";font-size:11px;color:var(--muted);transition:transform .15s}
+  details.sub[open]>summary::before{transform:rotate(90deg)}
+  details.sec>summary{display:flex;align-items:center;gap:8px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  details.sec>summary::before{content:"▸";font-size:11px;color:var(--muted);transition:transform .15s}
+  details.sec[open]>summary{margin-bottom:12px}
+  details.sec[open]>summary::before{transform:rotate(90deg)}
 </style>
 </head>
 <body>
@@ -125,19 +148,23 @@
     <label class="opt">
       <input type="radio" name="mode" value="A" checked />
       <span>
-        <span class="t">Scale source sizes — compensation <code>×k²</code></span>
-        <span class="d">Source sizes (SourceWidth/Radius) grow with the rig. Shadows keep their character; the inverse-square law applies strictly to every light. Closest to the original look — recommended.</span>
+        <span class="t">Scale source sizes — <code>×k²</code></span>
+        <span class="d">Sizes grow with the rig; shadows keep their look. Closest to the original — recommended.</span>
       </span>
     </label>
     <label class="opt">
       <input type="radio" name="mode" value="B" />
       <span>
-        <span class="t">Keep source sizes — compensation <code>×k^p</code></span>
-        <span class="d">Sizes unchanged. Sharp key ≈ k², large soft fills are gentler (~k^1.7) — the near field, where inverse-square "doesn't hold".</span>
+        <span class="t">Keep source sizes — <code>×k^p</code></span>
+        <span class="d">Sizes stay fixed; large soft fills fall off gentler than k² (near field).</span>
       </span>
     </label>
+    <details class="mini">
+      <summary>When to use which?</summary>
+      <p class="note">At the reference size both modes are identical. <b>Mode A</b> keeps the rig proportional to the sofa — the closest match to the original look at any size. <b>Mode B</b> treats the lights as fixed physical fixtures, so big soft sources stay relatively soft as the sofa grows.</p>
+    </details>
 
-    <details>
+    <details class="mini">
       <summary>Reference rig dimensions (advanced)</summary>
       <div class="grid3" style="margin-top:10px">
         <div><label>ref X</label><input id="rW" type="number" value="453" step="1" min="1" /></div>
@@ -149,10 +176,13 @@
 
     <div id="warn" class="warn"></div>
 
-    <p class="note">
-      <b>Axes:</b> world&nbsp;X↔width(453), Y↔depth(274), Z↔height(77) — inferred from the fill (SourceWidth&nbsp;500&nbsp;≈&nbsp;453).
-      Positions scale per-axis; <b>AttenuationRadius</b> follows the distance; rotations stay fixed.
-    </p>
+    <details class="mini">
+      <summary>How axes &amp; scaling work</summary>
+      <p class="note">
+        <b>Axes:</b> world&nbsp;X↔width(453), Y↔depth(274), Z↔height(77) — inferred from the fill (SourceWidth&nbsp;500&nbsp;≈&nbsp;453).
+        Positions scale per-axis; <b>AttenuationRadius</b> follows the distance; rotations stay fixed.
+      </p>
+    </details>
   </section>
 
   <!-- ── Output ─────────────────────────────── -->
@@ -166,14 +196,16 @@
     </div>
     <textarea id="out" spellcheck="false" readonly></textarea>
 
-    <h2 style="margin-top:16px">Per-light breakdown</h2>
-    <table id="tbl">
-      <thead>
-        <tr><th>Light</th><th>type</th><th>X</th><th>Y</th><th>Z</th><th>k</th><th>Intensity</th><th>p</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p class="note"><b>p</b> — effective falloff exponent: Intensity ∝ k<sup>p</sup> (mode B). p ≈ 2 is inverse-square (small/sharp sources); p &lt; 2 is gentler (large soft sources, near field). Mode A always uses k² (p = 2).</p>
+    <details class="sub">
+      <summary>Per-light breakdown</summary>
+      <table id="tbl">
+        <thead>
+          <tr><th>Light</th><th>type</th><th>X</th><th>Y</th><th>Z</th><th>k</th><th>Intensity</th><th>p</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p class="note"><b>p</b> — effective falloff exponent: Intensity ∝ k<sup>p</sup> (mode B). p ≈ 2 is inverse-square (small/sharp sources); p &lt; 2 is gentler (large soft sources, near field). Mode A always uses k² (p = 2).</p>
+    </details>
   </section>
 
   <!-- ── Diagrams (top + side) ──────────────── -->
@@ -200,8 +232,8 @@
   </section>
 
   <!-- ── Formula ────────────────────────────── -->
-  <section class="panel formula">
-    <h2>Calculation formula</h2>
+  <details class="panel formula sec">
+    <summary>Calculation formula</summary>
     <div class="fml">
       <div class="lbl">1. Scale factors (reference rig <span id="fREF">453 × 274 × 77</span>):</div>
       <div class="eq"><span class="v">s<sub>X</sub></span> = W / <span id="fW1">453</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">s<sub>Y</sub></span> = D / <span id="fD1">274</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">s<sub>Z</sub></span> = H / <span id="fH1">77</span></div>
@@ -232,7 +264,7 @@
       R is comparable to the distance — the near field — so illuminance falls off gentler than k².
       When the input equals the reference, <code>k = 1</code> → the output matches the source rig 1:1.
     </p>
-  </section>
+  </details>
 </main>
 
 <script>
