@@ -62,10 +62,29 @@
   .fml .v{color:var(--accent)}
   .fml sub,.fml sup{font-size:10px}
   .diagram{grid-column:1 / -1}
-  #diagram{width:100%;height:460px;background:#0f1115;border:1px solid var(--line);border-radius:8px;display:block}
+  .views{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:760px){.views{grid-template-columns:1fr}}
+  .view h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .view svg{width:100%;height:360px;background:#0f1115;border:1px solid var(--line);border-radius:8px;display:block}
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--muted);align-items:center}
   .legend .it{display:flex;align-items:center;gap:6px}
   .legend .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .field{margin-bottom:10px}
+  .field .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .field .top label{margin:0}
+  .field .num{width:88px;text-align:right}
+  .field input[type=range]{width:100%;margin-top:6px;accent-color:var(--accent)}
+  .presetbar{display:flex;gap:8px;margin-bottom:14px}
+  .presetbar select{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font-size:13px}
+  .ibtn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 11px;font-size:13px;cursor:pointer}
+  .ibtn:hover{border-color:var(--accent)}
+  .warn{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .warn .w{font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #5c4a16;background:#241f10;color:#e7c66b}
+  .warn .w.ok{background:#15241a;border-color:#264d33;color:#7fd69a}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg input{display:none}
+  .seg label{padding:6px 11px;font-size:12px;cursor:pointer;color:var(--muted);margin:0}
+  .seg input:checked + label{background:var(--accent);color:#04201f}
 </style>
 </head>
 <body>
@@ -78,19 +97,23 @@
   <!-- ── Controls ───────────────────────────── -->
   <section class="panel">
     <h2>Sofa dimensions (cm)</h2>
-    <div class="grid3">
-      <div>
-        <label>Width · X</label>
-        <input id="W" type="number" value="453" step="1" min="1" />
-      </div>
-      <div>
-        <label>Depth · Y</label>
-        <input id="D" type="number" value="274" step="1" min="1" />
-      </div>
-      <div>
-        <label>Height · Z</label>
-        <input id="H" type="number" value="77" step="1" min="1" />
-      </div>
+    <div class="presetbar">
+      <select id="preset" title="Presets"></select>
+      <button id="savePreset" class="ibtn" title="Save current as a preset">＋ Save</button>
+      <button id="delPreset" class="ibtn" title="Delete the selected preset">🗑</button>
+    </div>
+
+    <div class="field">
+      <div class="top"><label>Width · X</label><input id="W" class="num" type="number" value="453" step="1" min="1" /></div>
+      <input id="Ws" type="range" min="80" max="1000" step="1" value="453" />
+    </div>
+    <div class="field">
+      <div class="top"><label>Depth · Y</label><input id="D" class="num" type="number" value="274" step="1" min="1" /></div>
+      <input id="Ds" type="range" min="80" max="1000" step="1" value="274" />
+    </div>
+    <div class="field">
+      <div class="top"><label>Height · Z</label><input id="H" class="num" type="number" value="77" step="1" min="1" /></div>
+      <input id="Hs" type="range" min="30" max="160" step="1" value="77" />
     </div>
 
     <label class="check">
@@ -124,6 +147,8 @@
       <p class="note">The sofa size the rig is tuned for right now. When the input equals the reference, the output matches the source T3D 1:1.</p>
     </details>
 
+    <div id="warn" class="warn"></div>
+
     <p class="note">
       <b>Axes:</b> world&nbsp;X↔width(453), Y↔depth(274), Z↔height(77) — inferred from the fill (SourceWidth&nbsp;500&nbsp;≈&nbsp;453).
       Positions scale per-axis; <b>AttenuationRadius</b> follows the distance; rotations stay fixed.
@@ -135,8 +160,9 @@
     <h2>T3D to paste into Unreal</h2>
     <div class="bar">
       <button id="copy" class="btn">📋 Copy</button>
+      <button id="copyLink" class="btn sec">🔗 Link</button>
       <button id="reset" class="btn sec">Reset</button>
-      <span id="flash" class="flash">Copied — Ctrl+V in the UE viewport</span>
+      <span id="flash" class="flash"></span>
     </div>
     <textarea id="out" spellcheck="false" readonly></textarea>
 
@@ -150,17 +176,26 @@
     <p class="note"><b>p</b> — effective falloff exponent: Intensity ∝ k<sup>p</sup> (mode B). p ≈ 2 is inverse-square (small/sharp sources); p &lt; 2 is gentler (large soft sources, near field). Mode A always uses k² (p = 2).</p>
   </section>
 
-  <!-- ── Top-view diagram ───────────────────── -->
+  <!-- ── Diagrams (top + side) ──────────────── -->
   <section class="panel diagram">
-    <h2>Top view — sofa &amp; lights</h2>
-    <svg id="diagram" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h2 style="margin:0">Diagrams — top &amp; side view</h2>
+      <span class="seg">
+        <input type="radio" name="colorby" id="cbRole" value="role" checked /><label for="cbRole">color: role</label>
+        <input type="radio" name="colorby" id="cbTemp" value="temp" /><label for="cbTemp">color: temperature</label>
+      </span>
+    </div>
+    <div class="views" style="margin-top:12px">
+      <div class="view"><h3>Top view (X · Y)</h3><svg id="diagram" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="view"><h3>Side view (X · Z) — height &amp; pitch</h3><svg id="sideview" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    </div>
     <div class="legend">
       <span class="it"><span class="sw" style="background:#ffcf5a"></span>key (spot)</span>
       <span class="it"><span class="sw" style="background:#6db7ff"></span>fill (rect)</span>
       <span class="it"><span class="sw" style="background:#c98bff"></span>left rim (spot)</span>
       <span class="it"><span class="sw" style="background:#4fd1c5"></span>right rim (rect)</span>
       <span class="it"><span class="sw" style="background:#7bd88f"></span>right bounce (rect)</span>
-      <span class="it" style="margin-left:auto">● spot cone · ▬ rect panel · arrow = aim · label = intensity · brighter glow = higher intensity</span>
+      <span class="it" style="margin-left:auto">grid = cm · ● spot cone · ▬ rect panel · arrow = aim · brighter glow = higher intensity</span>
     </div>
   </section>
 
@@ -428,71 +463,142 @@ if (typeof document !== "undefined"){
   const $ = id => document.getElementById(id);
   const num = (id, def) => { const v = parseFloat($(id).value); return (isFinite(v) && v > 0) ? v : def; };
 
-  /* Per-light visual metadata for the top view (yaw/cone from the T3D, role color). */
+  /* Per-light visual metadata (yaw/pitch/cone from the T3D; role color; white-balance K). */
   const VIZ = {
-    front_fill_lgt:   { yaw:-90,  cone:null, label:"fill",   color:"#6db7ff" },
-    left_rim_lgt:     { yaw:4,    cone:90,   label:"L rim",  color:"#c98bff" },
-    main_key_lgt:     { yaw:-11,  cone:37,   label:"key",    color:"#ffcf5a" },
-    right_bounce_lgt: { yaw:-140, cone:null, label:"bounce", color:"#7bd88f" },
-    right_rim_lgt:    { yaw:180,  cone:null, label:"R rim",  color:"#4fd1c5" },
+    front_fill_lgt:   { yaw:-90,  pitch:4,   cone:null, label:"fill",   color:"#6db7ff", temp:6500 },
+    left_rim_lgt:     { yaw:4,    pitch:-43, cone:90,   label:"L rim",  color:"#c98bff", temp:6500 },
+    main_key_lgt:     { yaw:-11,  pitch:-25, cone:37,   label:"key",    color:"#ffcf5a", temp:6500 },
+    right_bounce_lgt: { yaw:-140, pitch:0,   cone:null, label:"bounce", color:"#7bd88f", temp:6000 },
+    right_rim_lgt:    { yaw:180,  pitch:0,   cone:null, label:"R rim",  color:"#4fd1c5", temp:6000 },
   };
 
-  // Top-down schematic. World coords map straight to the viewBox; +Y points down
-  // (toward the camera/front). Sizes are in world units so it scales with the view.
-  function renderDiagram(res, sofaX, sofaY, H){
-    const svg = $("diagram");
-    if (!svg) return;
-    const names = Object.keys(res);
+  /* Presets: a built-in reference + your own (saved in localStorage). */
+  const BUILTIN = { "Reference (453 × 274 × 77)": { W:453, D:274, H:77 } };
+  const LS_KEY = "lrs_presets";
+  const userPresets = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch(e){ return {}; } };
+  const setUserPresets = p => { try { localStorage.setItem(LS_KEY, JSON.stringify(p)); } catch(e){} };
 
+  /* Approx. blackbody Kelvin → CSS color (for the "color: temperature" view). */
+  function kelvinToColor(K){
+    const t = K/100; let r, g, b;
+    if (t <= 66){ r = 255; g = 99.47*Math.log(t) - 161.12; b = t <= 19 ? 0 : 138.52*Math.log(t-10) - 305.04; }
+    else { r = 329.7*Math.pow(t-60, -0.1332); g = 288.12*Math.pow(t-60, -0.0755); b = 255; }
+    const c = v => Math.max(0, Math.min(255, Math.round(v || 0)));
+    return `rgb(${c(r)},${c(g)},${c(b)})`;
+  }
+  const colorOf = n => $("cbTemp").checked ? kelvinToColor((VIZ[n]||{}).temp || 6500) : (VIZ[n]||{}).color || "#cccccc";
+
+  /* "Nice" grid step so the cm labels stay round. */
+  function niceStep(span){
+    const raw = span/6, pow = Math.pow(10, Math.floor(Math.log10(raw))), m = raw/pow;
+    return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * pow;
+  }
+
+  // Top-down schematic (X·Y). World coords map straight to the viewBox; +Y points
+  // down (toward the camera/front). Sizes are in world units so it scales with the view.
+  function renderDiagram(res, sofaX, sofaY, H){
+    const svg = $("diagram"); if (!svg) return;
+    const names = Object.keys(res);
     let minX = -sofaX/2, maxX = sofaX/2, minY = -sofaY/2, maxY = sofaY/2;
     for (const n of names){ const [x,y] = res[n].pos;
       minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y); }
-    const span = Math.max(maxX-minX, maxY-minY) || 1, pad = span*0.10 + 60;
+    const pad = (Math.max(maxX-minX, maxY-minY) || 1)*0.10 + 60;
     minX-=pad; maxX+=pad; minY-=pad; maxY+=pad;
     const vbW = maxX-minX, vbH = maxY-minY, u = Math.max(vbW, vbH);
     svg.setAttribute("viewBox", `${minX} ${minY} ${vbW} ${vbH}`);
-
-    const fs = u*0.024, sw = u*0.0038, dot = u*0.014;
+    const fs = u*0.022, sw = u*0.0036, dot = u*0.013, step = niceStep(u);
     const maxI = Math.max(...names.map(n => res[n].intensity), 1e-6);
     const hx = sofaX/2, hy = sofaY/2, rx = Math.min(sofaX,sofaY)*0.08;
 
-    let cones = "", marks = "";   // cones go behind the sofa, marks/labels on top
+    let grid = "";
+    for (let x = Math.ceil(minX/step)*step; x <= maxX; x += step){
+      grid += `<line x1="${x}" y1="${minY}" x2="${x}" y2="${maxY}" stroke="#1b1e25" stroke-width="${sw*0.6}"/>`;
+      grid += `<text x="${x}" y="${maxY-fs*0.3}" fill="#4b515c" font-size="${fs*0.78}" text-anchor="middle" font-family="system-ui">${Math.round(x)}</text>`;
+    }
+    for (let y = Math.ceil(minY/step)*step; y <= maxY; y += step){
+      grid += `<line x1="${minX}" y1="${y}" x2="${maxX}" y2="${y}" stroke="#1b1e25" stroke-width="${sw*0.6}"/>`;
+      grid += `<text x="${minX+fs*0.3}" y="${y-fs*0.2}" fill="#4b515c" font-size="${fs*0.78}" text-anchor="start" font-family="system-ui">${Math.round(y)}</text>`;
+    }
+
+    let cones = "", marks = "";
     for (const n of names){
-      const r = res[n], v = VIZ[n] || { yaw:0, cone:null, color:"#cccccc", label:n };
+      const r = res[n], v = VIZ[n] || { yaw:0, cone:null, label:n }, col = colorOf(n);
       const [x,y] = r.pos;
-      const a = v.yaw * Math.PI/180, fx = Math.cos(a), fy = Math.sin(a);
+      const a = v.yaw*Math.PI/180, fx = Math.cos(a), fy = Math.sin(a);
       const thr = Math.hypot(x,y) || u*0.3, len = Math.max(thr*0.9, u*0.12);
       const op = (0.10 + 0.28*Math.sqrt(r.intensity/maxI)).toFixed(3);
-      const half = (r.type==="spot" ? (v.cone||30) : 26) * Math.PI/180;
+      const half = (r.type==="spot" ? (v.cone||30) : 26)*Math.PI/180;
       const cl = (r.type==="spot" ? len : len*0.5);
       const e1x = fx*Math.cos(half)-fy*Math.sin(half), e1y = fx*Math.sin(half)+fy*Math.cos(half);
       const e2x = fx*Math.cos(-half)-fy*Math.sin(-half), e2y = fx*Math.sin(-half)+fy*Math.cos(-half);
-
-      // cone (spot) / soft fan (rect)
-      cones += `<path d="M ${x} ${y} L ${x+e1x*cl} ${y+e1y*cl} L ${x+e2x*cl} ${y+e2y*cl} Z" fill="${v.color}" opacity="${op}"/>`;
-      // aim arrow + icon (spot = bulb, rect = panel bar perpendicular to the aim) + label
-      marks += `<line x1="${x}" y1="${y}" x2="${x+fx*len*0.45}" y2="${y+fy*len*0.45}" stroke="${v.color}" stroke-width="${sw}"/>`;
-      if (r.type==="spot"){
-        marks += `<circle cx="${x}" cy="${y}" r="${dot}" fill="${v.color}" stroke="#0f1115" stroke-width="${sw*0.6}"/>`;
-      } else {
-        const pw = Math.min(r.w||100, u*0.20)/2, px=-fy, py=fx;
-        marks += `<line x1="${x-px*pw}" y1="${y-py*pw}" x2="${x+px*pw}" y2="${y+py*pw}" stroke="${v.color}" stroke-width="${sw*2.6}" stroke-linecap="round"/>`;
-      }
-      marks += `<text x="${x}" y="${y - dot*1.7}" fill="${v.color}" font-size="${fs}" text-anchor="middle" font-family="system-ui">${v.label} · ${r.intensity.toFixed(1)}</text>`;
+      cones += `<path d="M ${x} ${y} L ${x+e1x*cl} ${y+e1y*cl} L ${x+e2x*cl} ${y+e2y*cl} Z" fill="${col}" opacity="${op}"/>`;
+      marks += `<line x1="${x}" y1="${y}" x2="${x+fx*len*0.45}" y2="${y+fy*len*0.45}" stroke="${col}" stroke-width="${sw}"/>`;
+      if (r.type==="spot") marks += `<circle cx="${x}" cy="${y}" r="${dot}" fill="${col}" stroke="#0f1115" stroke-width="${sw*0.6}"/>`;
+      else { const pw = Math.min(r.w||100, u*0.20)/2, px=-fy, py=fx;
+        marks += `<line x1="${x-px*pw}" y1="${y-py*pw}" x2="${x+px*pw}" y2="${y+py*pw}" stroke="${col}" stroke-width="${sw*2.6}" stroke-linecap="round"/>`; }
+      marks += `<text x="${x}" y="${y-dot*1.7}" fill="${col}" font-size="${fs}" text-anchor="middle" font-family="system-ui">${v.label} · ${r.intensity.toFixed(1)}</text>`;
+      marks += `<text x="${x}" y="${y+dot*2.6}" fill="#7c8493" font-size="${fs*0.78}" text-anchor="middle" font-family="system-ui">z ${Math.round(r.pos[2])}</text>`;
     }
-
-    const axes =
-      `<line x1="${minX}" y1="0" x2="${maxX}" y2="0" stroke="#23262d" stroke-width="${sw*0.8}"/>` +
-      `<line x1="0" y1="${minY}" x2="0" y2="${maxY}" stroke="#23262d" stroke-width="${sw*0.8}"/>`;
     const sofa =
       `<rect x="${-hx}" y="${-hy}" width="${sofaX}" height="${sofaY}" rx="${rx}" fill="#2a2f3a" stroke="#566173" stroke-width="${sw*1.4}"/>` +
       `<rect x="${-hx}" y="${-hy}" width="${sofaX}" height="${Math.min(sofaY*0.24, u*0.05)}" rx="${rx*0.6}" fill="#3a4150"/>` +
-      `<text x="0" y="${hy + fs*1.5}" fill="#9aa1ad" font-size="${fs}" text-anchor="middle" font-family="system-ui">sofa  ${Math.round(sofaX)}×${Math.round(sofaY)}×${Math.round(H)}</text>`;
-    const hints =
-      `<text x="0" y="${maxY - fs*0.5}" fill="#6b7280" font-size="${fs*0.9}" text-anchor="middle" font-family="system-ui">▼ front / camera (+Y)</text>` +
-      `<text x="${maxX - fs*0.4}" y="${-fs*0.5}" fill="#6b7280" font-size="${fs*0.9}" text-anchor="end" font-family="system-ui">+X →</text>`;
+      `<text x="0" y="${hy+fs*1.5}" fill="#9aa1ad" font-size="${fs}" text-anchor="middle" font-family="system-ui">sofa ${Math.round(sofaX)}×${Math.round(sofaY)}</text>`;
+    const hints = `<text x="0" y="${maxY-fs*0.4}" fill="#6b7280" font-size="${fs*0.85}" text-anchor="middle" font-family="system-ui">▼ front / camera (+Y) · grid ${step}cm</text>`;
+    svg.innerHTML = grid + cones + sofa + marks + hints;
+  }
 
-    svg.innerHTML = axes + cones + sofa + marks + hints;
+  // Side schematic (X·Z). Screen y = -Z so up is up; floor at Z=0.
+  function renderSideView(res, sofaX, H){
+    const svg = $("sideview"); if (!svg) return;
+    const names = Object.keys(res);
+    let minX = -sofaX/2, maxX = sofaX/2, maxZ = H;
+    for (const n of names){ const x = res[n].pos[0], z = res[n].pos[2];
+      minX=Math.min(minX,x); maxX=Math.max(maxX,x); maxZ=Math.max(maxZ,z); }
+    const pad = (Math.max(maxX-minX, maxZ) || 1)*0.12 + 50;
+    const vbMinX = minX-pad, vbMaxX = maxX+pad, vbMinY = -(maxZ+pad), vbMaxY = pad;
+    const vbW = vbMaxX-vbMinX, vbH = vbMaxY-vbMinY, u = Math.max(vbW, vbH);
+    svg.setAttribute("viewBox", `${vbMinX} ${vbMinY} ${vbW} ${vbH}`);
+    const fs = u*0.024, sw = u*0.0038, dot = u*0.013, step = niceStep(u);
+
+    let grid = "";
+    for (let x = Math.ceil(vbMinX/step)*step; x <= vbMaxX; x += step){
+      grid += `<line x1="${x}" y1="${vbMinY}" x2="${x}" y2="${vbMaxY}" stroke="#1b1e25" stroke-width="${sw*0.6}"/>`;
+      grid += `<text x="${x}" y="${pad*0.55}" fill="#4b515c" font-size="${fs*0.78}" text-anchor="middle" font-family="system-ui">${Math.round(x)}</text>`;
+    }
+    for (let z = 0; z <= maxZ+pad; z += step){
+      grid += `<line x1="${vbMinX}" y1="${-z}" x2="${vbMaxX}" y2="${-z}" stroke="#1b1e25" stroke-width="${sw*0.6}"/>`;
+      grid += `<text x="${vbMinX+fs*0.3}" y="${-z-fs*0.2}" fill="#4b515c" font-size="${fs*0.78}" text-anchor="start" font-family="system-ui">${Math.round(z)}</text>`;
+    }
+    let g =
+      `<line x1="${vbMinX}" y1="0" x2="${vbMaxX}" y2="0" stroke="#566173" stroke-width="${sw*1.2}"/>` +
+      `<rect x="${-sofaX/2}" y="${-H}" width="${sofaX}" height="${H}" rx="${Math.min(sofaX,H)*0.06}" fill="#2a2f3a" stroke="#566173" stroke-width="${sw*1.2}"/>` +
+      `<text x="0" y="${fs*1.4}" fill="#9aa1ad" font-size="${fs}" text-anchor="middle" font-family="system-ui">floor · sofa H=${Math.round(H)}</text>`;
+    let marks = "";
+    for (const n of names){
+      const r = res[n], v = VIZ[n] || { yaw:0, pitch:0, label:n }, col = colorOf(n);
+      const x = r.pos[0], z = r.pos[2], y = -z;
+      const a = v.yaw*Math.PI/180, pa = (v.pitch||0)*Math.PI/180;
+      const dx = Math.cos(pa)*Math.cos(a), dy = -Math.sin(pa), L = u*0.10;
+      marks += `<line x1="${x}" y1="${y}" x2="${x+dx*L}" y2="${y+dy*L}" stroke="${col}" stroke-width="${sw}"/>`;
+      marks += `<circle cx="${x}" cy="${y}" r="${dot}" fill="${col}" stroke="#0f1115" stroke-width="${sw*0.6}"/>`;
+      marks += `<text x="${x}" y="${y-dot*1.6}" fill="${col}" font-size="${fs}" text-anchor="middle" font-family="system-ui">${v.label} · z${Math.round(z)}</text>`;
+    }
+    svg.innerHTML = grid + g + marks;
+  }
+
+  function renderWarnings(W, D, H, mode, swap, ref, res){
+    const box = $("warn"); if (!box) return;
+    const sX = (swap?D:W)/ref.W, sY = (swap?W:D)/ref.D, sZ = H/ref.H, ws = [];
+    const sMax = Math.max(Math.abs(sX-1), Math.abs(sY-1), Math.abs(sZ-1));
+    if (sMax > 0.5) ws.push(`Rig scaled to ~${Math.round((1+sMax)*100)}% of the reference — verify the look${mode==="B"?" (Mode B drifts more from the original)":""}.`);
+    const inAsp = (swap?D:W)/(swap?W:D), refAsp = ref.W/ref.D;
+    if (Math.abs(inAsp/refAsp - 1) > 0.25)
+      ws.push(`Footprint aspect ${inAsp.toFixed(2)}:1 differs from the reference ${refAsp.toFixed(2)}:1 — coverage was tuned for the reference shape; check framing.`);
+    const maxI = Math.max(...Object.values(res).map(r => r.intensity));
+    if (maxI > 250) ws.push(`Peak intensity ≈ ${Math.round(maxI)} cd (well above the source) — re-check camera exposure.`);
+    box.innerHTML = ws.length
+      ? ws.map(w => `<div class="w">⚠ ${w}</div>`).join("")
+      : `<div class="w ok">✓ Proportional to the reference rig.</div>`;
   }
 
   function setRefLabels(ref){
@@ -513,6 +619,9 @@ if (typeof document !== "undefined"){
 
     const sofaX = swap ? D : W, sofaY = swap ? W : D;
     renderDiagram(res, sofaX, sofaY, H);
+    renderSideView(res, sofaX, H);
+    renderWarnings(W, D, H, mode, swap, ref, res);
+    writeURL(W, D, H, mode, swap, ref);
 
     const body = $("tbl").querySelector("tbody");
     body.innerHTML = "";
@@ -529,22 +638,84 @@ if (typeof document !== "undefined"){
     }
   }
 
-  async function copyOut(){
-    const text = $("out").value;
-    try { await navigator.clipboard.writeText(text); }
-    catch(e){ $("out").removeAttribute("readonly"); $("out").select();
-              document.execCommand("copy"); $("out").setAttribute("readonly",""); }
-    const f = $("flash"); f.classList.add("show"); setTimeout(()=>f.classList.remove("show"), 1800);
+  /* state → URL hash (shareable link) */
+  function writeURL(W, D, H, mode, swap, ref){
+    const p = new URLSearchParams({ W, D, H, m:mode, sw:swap?1:0, rW:ref.W, rD:ref.D, rH:ref.H, cb:$("cbTemp").checked?"temp":"role" });
+    history.replaceState(null, "", "#" + p.toString());
+  }
+  function readURL(){
+    const h = new URLSearchParams(location.hash.slice(1));
+    const setv = (id, k) => { if (h.has(k)){ const e = $(id); if (e) e.value = h.get(k); } };
+    setv("W","W"); setv("D","D"); setv("H","H"); setv("rW","rW"); setv("rD","rD"); setv("rH","rH");
+    ["W","D","H"].forEach(n => { $(n+"s").value = $(n).value; });
+    if (h.get("m") === "B"){ const b = document.querySelector('input[name=mode][value=B]'); if (b) b.checked = true; }
+    if (h.get("sw") === "1") $("swap").checked = true;
+    if (h.get("cb") === "temp") $("cbTemp").checked = true;
   }
 
-  document.querySelectorAll("input").forEach(el => el.addEventListener("input", render));
-  $("copy").addEventListener("click", copyOut);
+  /* clipboard with a non-secure-context fallback */
+  function fallbackCopy(text){
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch(e){}
+    document.body.removeChild(ta);
+  }
+  function copyText(text){
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    fallbackCopy(text); return Promise.resolve();
+  }
+  function flash(msg){ const f = $("flash"); f.textContent = msg; f.classList.add("show"); setTimeout(() => f.classList.remove("show"), 1800); }
+
+  /* presets */
+  function refreshPresets(sel){
+    const all = { ...BUILTIN, ...userPresets() };
+    $("preset").innerHTML = Object.keys(all).map(k => `<option${k===sel?" selected":""}>${k}</option>`).join("");
+  }
+  function applyDims(p){
+    $("W").value = p.W; $("Ws").value = p.W;
+    $("D").value = p.D; $("Ds").value = p.D;
+    $("H").value = p.H; $("Hs").value = p.H;
+  }
+
+  /* wiring */
+  [["W","Ws"],["D","Ds"],["H","Hs"]].forEach(([n,s]) => {
+    $(n).addEventListener("input", () => { $(s).value = $(n).value; render(); });
+    $(s).addEventListener("input", () => { $(n).value = $(s).value; render(); });
+  });
+  ["rW","rD","rH","swap"].forEach(id => $(id).addEventListener("input", render));
+  document.querySelectorAll('input[name=mode], input[name=colorby]').forEach(el => el.addEventListener("change", render));
+
+  $("copy").addEventListener("click", () => copyText($("out").value).then(() => flash("Copied — Ctrl+V in the UE viewport")));
+  $("copyLink").addEventListener("click", () => copyText(location.href).then(() => flash("Link copied")));
   $("reset").addEventListener("click", () => {
-    $("W").value=453; $("D").value=274; $("H").value=77;
+    applyDims({ W:453, D:274, H:77 });
     $("rW").value=453; $("rD").value=274; $("rH").value=77;
-    $("swap").checked=false; document.querySelector('input[name=mode][value=A]').checked=true;
+    $("swap").checked = false;
+    document.querySelector('input[name=mode][value=A]').checked = true;
+    $("cbRole").checked = true;
     render();
   });
+  $("preset").addEventListener("change", () => {
+    const all = { ...BUILTIN, ...userPresets() };
+    const p = all[$("preset").value]; if (p){ applyDims(p); render(); }
+  });
+  $("savePreset").addEventListener("click", () => {
+    const W = num("W",453), D = num("D",274), H = num("H",77);
+    const name = prompt("Preset name:", `Sofa ${W}×${D}×${H}`); if (!name) return;
+    const u = userPresets(); u[name] = { W, D, H }; setUserPresets(u); refreshPresets(name);
+  });
+  $("delPreset").addEventListener("click", () => {
+    const name = $("preset").value;
+    if (BUILTIN[name]){ flash("Built-in preset can't be deleted"); return; }
+    const u = userPresets(); delete u[name]; setUserPresets(u);
+    refreshPresets("Reference (453 × 274 × 77)");
+  });
+
+  /* init */
+  refreshPresets();
+  readURL();
   render();
 }
 </script>
