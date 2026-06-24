@@ -19,7 +19,7 @@ There is no browser drag-drop upload; missing render files are simply hidden.
 For TQ shots, left-arm presets show server renders only in `TQ-L`;
 right-arm presets only in `TQ-R`. `F` and `FH` renders stay available.
 The bundled default preset is `KOPER_LEFT_ARM_L_SECTIONAL_prod39250480`
-with dimensions `453 x 274 x 77`.
+with dimensions `384 x 305 x 82`.
 
 > When you enter dimensions equal to the reference ones (453 × 274 × 77), the output matches
 > the original rig byte for byte — a handy way to verify that nothing has "drifted".

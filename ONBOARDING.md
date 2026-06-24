@@ -18,7 +18,7 @@ All logic is in a single `index.html` — no build, no dependencies.
 - **Camera shots / views:** `F` (front), `FH` (front-high), `TQ-R` (¾, sofa +30°, right-arm sectionals), `TQ-L` (¾, sofa −60°, left-arm). Each shot is its own light rig.
 - **Size scaling** of the rig by sofa W/D/H, with a 90° rotate (swap) toggle.
 - **Two intensity models:** A (scale source sizes, `I·k²`, closest to the original — default) / B (fixed sizes, `I·k^p`).
-- **Sofa presets:** 17 RH sectional models (UPH bounds measured in the UE project), plus user presets in `localStorage`. The default preset is `KOPER_LEFT_ARM_L_SECTIONAL_prod39250480` at `453 x 274 x 77` so it matches the reference rig and can load server renders immediately.
+- **Sofa presets:** 17 RH sectional models (UPH bounds measured in the UE project), plus user presets in `localStorage`. The default preset is `KOPER_LEFT_ARM_L_SECTIONAL_prod39250480` at `384 x 305 x 82` so it can load server renders immediately.
 - **Diagrams:** top view (X·Y, TQ sofa drawn rotated by its shot angle) and side view (X·Z, heights & pitch), with a cm grid and a role|temperature color toggle.
 - **Warnings** (scale magnitude, aspect mismatch, peak intensity), **shareable URL** (state in the hash), **sliders**, copy / copy-link.
 - **Render previews**: server-side images loaded from `Renders/<material>/<render-prefix>_<shot-suffix>.png` next to `index.html`. No drag-drop and no IndexedDB image storage. Comments are still local, keyed by image URL in `localStorage`.
