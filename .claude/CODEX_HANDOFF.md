@@ -29,6 +29,10 @@ Built-in presets have an `r` property used as the filename prefix, for example:
 - `KOPER_LEFT_ARM_L_SECTIONAL_prod39250480`
 - `MASSON_LEFT_ARM_TWO_SEAT_CHAISE_END_U_SECTIONAL_prod40460153`
 
+Default preset:
+- The first dropdown option is intentionally named `KOPER_LEFT_ARM_L_SECTIONAL_prod39250480`, not `Reference (...)`, so the initial selection has an `r` prefix and loads server renders immediately.
+- The older human-readable duplicate `Koper · Left-Arm L (39250480)` was removed to avoid two presets pointing at the same render files.
+
 Shot suffixes currently wired:
 - `F` -> `F`
 - `FH` -> `FH`
