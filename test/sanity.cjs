@@ -41,6 +41,8 @@ check("identity F / mode B === TEMPLATE", gen("F", "B") === TEMPLATE);
 // 2. Every view generates valid, structurally-identical, brand-free T3D.
 const views = Object.keys(VIEWS);
 check("VIEWS = [F, FH, TQR, TQL]", views.join(",") === "F,FH,TQR,TQL");
+check("default Koper preset is 453x274x77",
+  /"KOPER_LEFT_ARM_L_SECTIONAL_prod39250480":\s*\{\s*W:453,\s*D:274,\s*H:77,/.test(html));
 for (const v of views) {
   const out = gen(v);
   const actors = (out.match(/Begin Actor/g) || []).length;

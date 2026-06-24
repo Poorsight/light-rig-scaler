@@ -587,7 +587,7 @@ if (typeof document !== "undefined"){
 
   /* Presets: RH sectional models (UPH bounds measured in the UE project) + your own (localStorage). */
   const BUILTIN = {
-    "KOPER_LEFT_ARM_L_SECTIONAL_prod39250480":           { W:385, D:305, H:82, r:"KOPER_LEFT_ARM_L_SECTIONAL_prod39250480" },
+    "KOPER_LEFT_ARM_L_SECTIONAL_prod39250480":           { W:453, D:274, H:77, r:"KOPER_LEFT_ARM_L_SECTIONAL_prod39250480" },
     "Borgo · Double Partial-Back U (39940015)":          { W:423, D:276, H:80, r:"BORGO_DOUBLE_PARTIAL_BACK_U_SECTIONAL_prod39940015" },
     "Borgo · Partial-Back Chaise-End U (39940017)":      { W:390, D:276, H:80, r:"BORGO_PARTIAL_BACK_CHAISE_END_U_SECTIONAL_prod39940017" },
     "Borgo · Partial-Back U (39940016)":                 { W:390, D:307, H:80, r:"BORGO_PARTIAL_BACK_U_SECTIONAL_prod39940016" },
@@ -820,7 +820,7 @@ if (typeof document !== "undefined"){
 
   /* presets */
   function refreshPresets(sel){
-    const all = { ...BUILTIN, ...userPresets() };
+    const all = { ...userPresets(), ...BUILTIN };
     $("preset").innerHTML = Object.keys(all).map(k => `<option${k===sel?" selected":""}>${k}</option>`).join("");
   }
   function applyDims(p){
@@ -843,7 +843,7 @@ if (typeof document !== "undefined"){
   };
   const rbSafePath = s => String(s || "").split("/").map(encodeURIComponent).join("/");
   const rbPrefixVariants = prefix => [prefix, `${prefix}_FH`];
-  const rbAllPresets = () => ({ ...BUILTIN, ...userPresets() });
+  const rbAllPresets = () => ({ ...userPresets(), ...BUILTIN });
   const rbPreset = () => rbAllPresets()[$("preset").value] || {};
   const rbCommentKey = url => "lrs_render_comment:" + url;
   const rbLoadComment = url => { try { return localStorage.getItem(rbCommentKey(url)) || ""; } catch(e){ return ""; } };
@@ -933,7 +933,7 @@ if (typeof document !== "undefined"){
     render();
   });
   $("preset").addEventListener("change", () => {
-    const all = { ...BUILTIN, ...userPresets() };
+    const all = { ...userPresets(), ...BUILTIN };
     const p = all[$("preset").value]; if (p){ applyDims(p); render(); }
   });
   $("savePreset").addEventListener("click", () => {

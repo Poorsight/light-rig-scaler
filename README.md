@@ -16,6 +16,8 @@ into Unreal via `Ctrl + V`.
 Render previews are loaded from the server when matching files exist under
 `Renders/<material>/<render-prefix>_<shot-suffix>.png` next to `index.html`.
 There is no browser drag-drop upload; missing render files are simply hidden.
+The bundled default preset is `KOPER_LEFT_ARM_L_SECTIONAL_prod39250480`
+with dimensions `453 x 274 x 77`.
 
 > When you enter dimensions equal to the reference ones (453 × 274 × 77), the output matches
 > the original rig byte for byte — a handy way to verify that nothing has "drifted".
