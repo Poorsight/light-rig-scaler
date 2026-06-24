@@ -13,6 +13,10 @@ into Unreal via `Ctrl + V`.
    (`front_fill_lgt`, `main_key_lgt`, `left_rim_lgt`, `right_bounce_lgt`, `right_rim_lgt`)
    in the `Lights` folder.
 
+Render previews are loaded from the server when matching files exist under
+`Renders/<material>/<render-prefix>_<shot-suffix>.png` next to `index.html`.
+There is no browser drag-drop upload; missing render files are simply hidden.
+
 > When you enter dimensions equal to the reference ones (453 × 274 × 77), the output matches
 > the original rig byte for byte — a handy way to verify that nothing has "drifted".
 
@@ -50,3 +54,6 @@ Settings → Pages → Source: `main` / `/ (root)`. Site: `https://<user>.github
 rename `light-rig-web/` → `docs/`, then in Settings → Pages choose `main` / `/docs`.
 
 No build is required — this is a pure static file.
+
+For the preview deployment used in production, keep the deployed folder together with its
+`Renders/` directory so the relative image URLs resolve correctly.
