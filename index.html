@@ -16,8 +16,8 @@
   header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
   header h1{margin:0;font-size:18px;letter-spacing:.2px}
   header p{margin:6px 0 0;color:var(--muted);font-size:13px}
-  main{display:grid;grid-template-columns:380px 1fr;gap:18px;padding:18px 24px;max-width:1280px}
-  @media (max-width:880px){main{grid-template-columns:1fr}}
+  main{display:grid;grid-template-columns:380px 1fr;gap:18px;padding:18px 24px;max-width:min(96vw, 1840px)}
+  @media (max-width:880px){main{grid-template-columns:1fr}.col2{grid-column:1 / -1}}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
   .panel h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
@@ -54,7 +54,11 @@
   details{margin-top:10px}
   summary{cursor:pointer;font-size:12px;color:var(--accent2)}
   code{font-family:var(--mono);color:var(--accent)}
-  .formula{grid-column:1 / -1}
+  .formula{grid-column:1 / -1;order:5}
+  .io{grid-column:1 / -1;order:4}
+  .col2{grid-column:2;order:2;display:flex;flex-direction:column;gap:18px;min-width:0}
+  .bd{grid-column:1 / -1;order:3}
+  main{align-items:start}
   .fml{background:#0f1115;border:1px solid var(--line);border-radius:8px;padding:14px 16px;
     font-family:var(--mono);font-size:13px;color:#cdd3db;overflow-x:auto}
   .fml .lbl{color:var(--muted);font-family:system-ui,sans-serif;font-size:12px;margin:14px 0 6px}
@@ -62,11 +66,11 @@
   .fml .eq{margin:4px 0;white-space:nowrap}
   .fml .v{color:var(--accent)}
   .fml sub,.fml sup{font-size:10px}
-  .diagram{grid-column:1 / -1}
+  .diagram{order:2}
   .views{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   @media (max-width:760px){.views{grid-template-columns:1fr}}
   .view h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
-  .view svg{width:100%;height:360px;background:#0f1115;border:1px solid var(--line);border-radius:8px;display:block}
+  .view svg{width:100%;height:320px;background:#0f1115;border:1px solid var(--line);border-radius:8px;display:block}
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--muted);align-items:center}
   .legend .it{display:flex;align-items:center;gap:6px}
   .legend .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
@@ -109,6 +113,18 @@
   details.sec>summary::before{content:"▸";font-size:11px;color:var(--muted);transition:transform .15s}
   details.sec[open]>summary{margin-bottom:12px}
   details.sec[open]>summary::before{transform:rotate(90deg)}
+  /* render board */
+  .rb{grid-column:1 / -1;order:3}
+  .rb .ctx{font-size:13px;color:var(--muted);margin-bottom:10px}
+  .rb .ctx b{color:var(--txt)}
+  .rbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:12px}
+  .rbcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+  .rbcard img{width:100%;height:150px;object-fit:cover;background:#0f1115;cursor:zoom-in;display:block}
+  .rbcard textarea{border:none;border-top:1px solid var(--line);background:transparent;color:var(--txt);font-family:inherit;font-size:12px;padding:8px;resize:vertical;min-height:44px;width:100%;box-sizing:border-box}
+  .rbcard textarea:focus{outline:none;background:#0f1115}
+  .rbcard .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;font-size:11px;color:var(--muted);border-top:1px solid var(--line)}
+  .rbcard .meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rbempty{border:1px solid var(--line);border-radius:8px;padding:14px;color:var(--muted);font-size:13px;background:#0f1115;margin-top:12px}
 </style>
 </head>
 <body>
@@ -196,7 +212,7 @@
   </section>
 
   <!-- ── Output ─────────────────────────────── -->
-  <section class="panel">
+  <section class="panel io">
     <h2>T3D to paste into Unreal</h2>
     <div class="bar">
       <button id="copy" class="btn">📋 Copy</button>
@@ -205,21 +221,9 @@
       <span id="flash" class="flash"></span>
     </div>
     <textarea id="out" spellcheck="false" readonly></textarea>
-
-    <details class="sub" open>
-      <summary>Per-light breakdown</summary>
-      <div class="tblwrap">
-      <table id="tbl">
-        <thead>
-          <tr><th>Light</th><th>type</th><th>X</th><th>Y</th><th>Z</th><th>Rot P·Y·R</th><th>Intensity</th><th>Size</th><th>Atten</th><th>k</th><th>p</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      </div>
-      <p class="note">Every field <code>generateT3D</code> writes. <b>Size</b>: rect = W×H (·b BarnDoorLength), spot = r SourceRadius (·s SoftSourceRadius). <b>Atten</b> = AttenuationRadius. <b>Rot</b> = Pitch·Yaw·Roll (per shot, not scaled). The grey tag next to Intensity is the source value. <b>p</b> = falloff exponent (mode B); mode A uses k² (p = 2).</p>
-    </details>
   </section>
 
+  <div class="col2">
   <!-- ── Diagrams (top + side) ──────────────── -->
   <section class="panel diagram">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -241,6 +245,31 @@
       <span class="it"><span class="sw" style="background:#7bd88f"></span>right bounce (rect)</span>
       <span class="it" style="margin-left:auto">grid = cm · ● spot cone · ▬ rect panel · arrow = aim · brighter glow = higher intensity</span>
     </div>
+  </section>
+
+  <!-- ── Render previews ─────────────────────── -->
+  <section class="panel rb">
+    <h2>Render previews</h2>
+    <div class="ctx">Server renders for <b id="rbCtx">—</b> · <span id="rbCount">0</span> image(s)</div>
+    <div id="rbStatus" class="rbempty">Select a preset with server renders.</div>
+    <div id="rbGrid" class="rbgrid"></div>
+  </section>
+  </div>
+
+  <!-- ── Per-light breakdown ─────────────────── -->
+  <section class="panel bd">
+    <details class="sub" open>
+      <summary>Per-light breakdown</summary>
+      <div class="tblwrap">
+      <table id="tbl">
+        <thead>
+          <tr><th>Light</th><th>type</th><th>X</th><th>Y</th><th>Z</th><th>Rot P·Y·R</th><th>Intensity</th><th>Size</th><th>Atten</th><th>k</th><th>p</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <p class="note">Every field <code>generateT3D</code> writes. <b>Size</b>: rect = W×H (·b BarnDoorLength), spot = r SourceRadius (·s SoftSourceRadius). <b>Atten</b> = AttenuationRadius. <b>Rot</b> = Pitch·Yaw·Roll (per shot, not scaled). The grey tag next to Intensity is the source value. <b>p</b> = falloff exponent (mode B); mode A uses k² (p = 2).</p>
+    </details>
   </section>
 
   <!-- ── Formula ────────────────────────────── -->
@@ -558,23 +587,23 @@ if (typeof document !== "undefined"){
   /* Presets: reference + RH sectional models (UPH bounds measured in the UE project) + your own (localStorage). */
   const BUILTIN = {
     "Reference (453 × 274 × 77)":                        { W:453, D:274, H:77 },
-    "Borgo · Double Partial-Back U (39940015)":          { W:423, D:276, H:80 },
-    "Borgo · Partial-Back Chaise-End U (39940017)":      { W:390, D:276, H:80 },
-    "Borgo · Partial-Back U (39940016)":                 { W:390, D:307, H:80 },
-    "Borgo · Right-Arm Chaise (39250509)":               { W:361, D:210, H:80 },
-    "Borgo · Right-Arm L (39250511)":                    { W:381, D:310, H:80 },
-    "Borgo · U (39250513)":                              { W:453, D:280, H:80 },
-    "Koper · Chaise-End U (39940020)":                   { W:394, D:276, H:83 },
-    "Koper · Left-Arm L (39250480)":                     { W:385, D:305, H:82 },
-    "Koper · U-Chaise (39250482)":                       { W:403, D:233, H:83 },
-    "Koper · U (39250483)":                              { W:459, D:276, H:83 },
-    "Masson · Left-Arm 2-Seat Chaise-End U (40460153)":  { W:453, D:275, H:78 },
-    "Masson · Right-Arm Chaise-End (39250417)":          { W:361, D:200, H:78 },
-    "Masson · Right-Arm L (39250419)":                   { W:312, D:246, H:77 },
-    "Masson · Right-Arm 2-Seat Chaise-End U (40460154)": { W:453, D:275, H:78 },
-    "Masson · U-Chaise (39250420)":                      { W:447, D:200, H:78 },
-    "Masson · U (39250421)":                             { W:434, D:275, H:78 },
-    "Onic · Right-Arm L (39250451)":                     { W:343, D:307, H:79 },
+    "Borgo · Double Partial-Back U (39940015)":          { W:423, D:276, H:80, r:"BORGO_DOUBLE_PARTIAL_BACK_U_SECTIONAL_prod39940015" },
+    "Borgo · Partial-Back Chaise-End U (39940017)":      { W:390, D:276, H:80, r:"BORGO_PARTIAL_BACK_CHAISE_END_U_SECTIONAL_prod39940017" },
+    "Borgo · Partial-Back U (39940016)":                 { W:390, D:307, H:80, r:"BORGO_PARTIAL_BACK_U_SECTIONAL_prod39940016" },
+    "Borgo · Right-Arm Chaise (39250509)":               { W:361, D:210, H:80, r:"BORGO_RIGHT_ARM_CHAISE_SECTIONAL_prod39250509" },
+    "Borgo · Right-Arm L (39250511)":                    { W:381, D:310, H:80, r:"BORGO_RIGHT_ARM_L_SECTIONAL_prod39250511" },
+    "Borgo · U (39250513)":                              { W:453, D:280, H:80, r:"BORGO_U_SECTIONAL_prod39250513" },
+    "Koper · Chaise-End U (39940020)":                   { W:394, D:276, H:83, r:"KOPER_CHAISE_END_U_SECTIONAL_prod39940020" },
+    "Koper · Left-Arm L (39250480)":                     { W:385, D:305, H:82, r:"KOPER_LEFT_ARM_L_SECTIONAL_prod39250480" },
+    "Koper · U-Chaise (39250482)":                       { W:403, D:233, H:83, r:"KOPER_U_CHAISE_SECTIONAL_prod39250482" },
+    "Koper · U (39250483)":                              { W:459, D:276, H:83, r:"KOPER_U_SECTIONAL_prod39250483" },
+    "Masson · Left-Arm 2-Seat Chaise-End U (40460153)":  { W:453, D:275, H:78, r:"MASSON_LEFT_ARM_TWO_SEAT_CHAISE_END_U_SECTIONAL_prod40460153" },
+    "Masson · Right-Arm Chaise-End (39250417)":          { W:361, D:200, H:78, r:"MASSON_RIGHT_ARM_CHAISE_END_SECTIONAL_prod39250417" },
+    "Masson · Right-Arm L (39250419)":                   { W:312, D:246, H:77, r:"MASSON_RIGHT_ARM_L_SECTIONAL_prod39250419" },
+    "Masson · Right-Arm 2-Seat Chaise-End U (40460154)": { W:453, D:275, H:78, r:"MASSON_RIGHT_ARM_TWO_SEAT_CHAISE_END_U_SECTIONAL_prod40460154" },
+    "Masson · U-Chaise (39250420)":                      { W:447, D:200, H:78, r:"MASSON_U_CHAISE_SECTIONAL_prod39250420" },
+    "Masson · U (39250421)":                             { W:434, D:275, H:78, r:"MASSON_U_SECTIONAL_prod39250421" },
+    "Onic · Right-Arm L (39250451)":                     { W:343, D:307, H:79, r:"ONIC_RIGHT_ARM_L_SECTIONAL_prod39250451" },
   };
   const LS_KEY = "lrs_presets";
   const userPresets = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch(e){ return {}; } };
@@ -753,6 +782,9 @@ if (typeof document !== "undefined"){
         `<td>${(mode==="A"?2:r.p).toFixed(2)}</td>`;
       body.appendChild(tr);
     }
+
+    const g = $("preset").value + "❘" + view;          // refresh the render board only when preset/shot changes
+    if (g !== lastGroup){ lastGroup = g; renderBoard(); }
   }
 
   /* state → URL hash (shareable link) */
@@ -795,6 +827,89 @@ if (typeof document !== "undefined"){
     $("W").value = p.W; $("Ws").value = p.W;
     $("D").value = p.D; $("Ds").value = p.D;
     $("H").value = p.H; $("Hs").value = p.H;
+  }
+
+  /* Server render board: Renders/<material>/<preset-render-prefix>_<shot>.png */
+  let lastGroup = null, rbToken = 0;
+  const RB_MATERIALS = [
+    { dir:"PERFORMANCE_LINEN_WEAVE_CAMEL_V1", label:"Performance Linen Weave Camel" },
+    { dir:"VELVETY_NATURAL_V1", label:"Velvety Natural" },
+  ];
+  const RB_VIEW_SUFFIXES = {
+    F: ["F"],
+    FH: ["FH"],
+    TQR: ["RIGHT_ARM", "TQ"],
+    TQL: ["LEFT_ARM", "TQ"],
+  };
+  const rbSafePath = s => String(s || "").split("/").map(encodeURIComponent).join("/");
+  const rbPrefixVariants = prefix => [prefix, `${prefix}_FH`];
+  const rbAllPresets = () => ({ ...BUILTIN, ...userPresets() });
+  const rbPreset = () => rbAllPresets()[$("preset").value] || {};
+  const rbCommentKey = url => "lrs_render_comment:" + url;
+  const rbLoadComment = url => { try { return localStorage.getItem(rbCommentKey(url)) || ""; } catch(e){ return ""; } };
+  const rbSaveComment = (url, value) => { try { localStorage.setItem(rbCommentKey(url), value); } catch(e){} };
+  function rbCandidateUrls(prefix, material, view){
+    const out = [];
+    for (const p of rbPrefixVariants(prefix)){
+      for (const suffix of (RB_VIEW_SUFFIXES[view] || [view])){
+        out.push(`Renders/${rbSafePath(material.dir)}/${rbSafePath(p)}_${rbSafePath(suffix)}.png`);
+      }
+    }
+    return out;
+  }
+
+  function renderBoard(){
+    const grid = $("rbGrid"), status = $("rbStatus"); if (!grid) return;
+    const token = ++rbToken, presetName = $("preset").value, view = currentView(), preset = rbPreset();
+    const prefix = preset.r;
+    $("rbCtx").textContent = `${presetName} · ${view}`;
+    $("rbCount").textContent = "0";
+    grid.innerHTML = "";
+    if (status){ status.style.display = "block"; status.textContent = prefix ? "Checking server renders..." : "This preset has no server render prefix."; }
+    if (!prefix) return;
+
+    let loaded = 0, finished = 0;
+    const done = () => {
+      if (token !== rbToken) return;
+      finished++;
+      if (finished === RB_MATERIALS.length && status){
+        status.style.display = loaded ? "none" : "block";
+        status.textContent = loaded ? "" : "No matching render files found on the server for this preset and shot.";
+      }
+    };
+
+    for (const material of RB_MATERIALS){
+      const urls = rbCandidateUrls(prefix, material, view);
+      const card = document.createElement("div"); card.className = "rbcard";
+      const img = document.createElement("img"); img.title = "open full size";
+      const ta = document.createElement("textarea"); ta.placeholder = "comment...";
+      const meta = document.createElement("div"); meta.className = "meta";
+      const nm = document.createElement("span"); nm.textContent = material.label; nm.title = material.dir;
+      const file = document.createElement("span"); file.textContent = "";
+      meta.append(nm, file); card.append(img, ta, meta);
+
+      let idx = 0, activeUrl = "";
+      const tryNext = () => {
+        if (idx >= urls.length){ card.remove(); done(); return; }
+        activeUrl = urls[idx++];
+        img.src = activeUrl;
+      };
+      img.addEventListener("load", () => {
+        if (token !== rbToken) return;
+        loaded++;
+        $("rbCount").textContent = loaded;
+        if (status) status.style.display = "none";
+        file.textContent = activeUrl.split("/").pop();
+        file.title = activeUrl;
+        ta.value = rbLoadComment(activeUrl);
+        ta.oninput = () => rbSaveComment(activeUrl, ta.value);
+        img.onclick = () => window.open(activeUrl, "_blank");
+        grid.appendChild(card);
+        done();
+      });
+      img.addEventListener("error", tryNext);
+      tryNext();
+    }
   }
 
   /* wiring */

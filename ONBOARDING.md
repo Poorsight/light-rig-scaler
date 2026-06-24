@@ -21,6 +21,7 @@ All logic is in a single `index.html` — no build, no dependencies.
 - **Sofa presets:** reference + 17 RH sectional models (UPH bounds measured in the UE project), plus user presets in `localStorage`.
 - **Diagrams:** top view (X·Y, TQ sofa drawn rotated by its shot angle) and side view (X·Z, heights & pitch), with a cm grid and a role|temperature color toggle.
 - **Warnings** (scale magnitude, aspect mismatch, peak intensity), **shareable URL** (state in the hash), **sliders**, copy / copy-link.
+- **Render previews**: server-side images loaded from `Renders/<material>/<render-prefix>_<shot-suffix>.png` next to `index.html`. No drag-drop and no IndexedDB image storage. Comments are still local, keyed by image URL in `localStorage`.
 
 ## Architecture
 Single self-contained `index.html`:
@@ -36,7 +37,34 @@ Single self-contained `index.html`:
      - `generateT3D(res)` → T3D string for pasting.
      - `fmt`, `hyp` — utilities.
      - `module.exports` (guarded by `typeof module !== "undefined"`) for node tests.
-  2. **UI** — wrapped in `if (typeof document !== "undefined")`: shot/preset/mode/color selectors, sliders, diagrams, warnings, table, URL state.
+  2. **UI** — wrapped in `if (typeof document !== "undefined")`: shot/preset/mode/color selectors, sliders, diagrams, warnings, table, URL state, and the server render board.
+
+## Server render previews
+The render board does not upload images from the browser anymore. It builds exact relative URLs and hides missing files.
+
+- Images are expected beside the deployed tool under `Renders/`.
+- Current material folders:
+  - `PERFORMANCE_LINEN_WEAVE_CAMEL_V1`
+  - `VELVETY_NATURAL_V1`
+- Built-in presets can include `r`, a render filename prefix, e.g. `BORGO_RIGHT_ARM_L_SECTIONAL_prod39250511`.
+- Current URL pattern: `Renders/<material>/<prefix-variant>_<suffix>.png`.
+- Prefix variants tried in order: `r`, then `r_FH` (needed for some current Borgo files).
+- Suffix map in `index.html`:
+  - `F` -> `F`
+  - `FH` -> `FH`
+  - `TQR` -> `RIGHT_ARM`, fallback `TQ`
+  - `TQL` -> `LEFT_ARM`, fallback `TQ`
+- Current server folder has renders for these SKU prefixes: `39250511`, `39250480`, `40460153`.
+- If a preset has no `r` prefix, the board shows a local status message instead of trying to load files.
+- If a candidate image returns 404, the card is removed; the page does not break.
+- Per-image comments use `localStorage` key prefix `lrs_render_comment:` and are tied to the final image URL.
+
+## Current handoff notes
+- Branch when this was written: `feature/preview-renders`.
+- `index.html` had uncommitted `r:` render prefixes on built-in presets before the server-board replacement; keep them unless the filename convention changes.
+- The old drag-drop/IndexedDB board was removed from `index.html`.
+- Preview/deploy context and current agent handoff live in `.claude/CODEX_HANDOFF.md`.
+- Before publishing, run `npm.cmd test`. On this Windows machine plain `npm test` can fail because PowerShell blocks `npm.ps1`; use `npm.cmd test`.
 
 ## Input/output contract (for integration)
 ```js
@@ -88,7 +116,7 @@ The numbers live in **`LIGHT_BASE`** (shared constants) + **`VIEWS`** (per-shot 
 - **Re-tune an existing shot:** edit `VIEWS[shot].lights` (position, intensity, pitch, yaw) and, if a size/atten changed, `LIGHT_BASE`.
 - **Add a new shot:** add a `VIEWS` entry + a radio in the "Shot / view" segmented control (id `v<KEY>`).
 - ⚠️ **F must stay in sync with `TEMPLATE`:** F's `VIEWS.F` values + `LIGHT_BASE` must reproduce `TEMPLATE` exactly (that's the identity invariant). If you re-export the skeleton from UE, keep the F numbers matching it and re-run `npm test`.
-- Keep asset paths neutralized to `/Game/LightRig/…` (no "RH" / "3dsource").
+- Keep generated T3D asset paths stable unless the UE source rig is intentionally re-exported with new paths.
 
 ## Tests
 Identity invariant — F at the reference reproduces the skeleton byte-for-byte:
@@ -104,7 +132,7 @@ all four views produce 5 actors, the same line count, and no branding; per-view 
 Run it after any edit to `LIGHT_BASE` / `VIEWS` / `TEMPLATE`.
 
 ## Project rules (important)
-- This tool lives **only** in `light-rig-scaler` @ `main`. Do **not** save anything about it into the `rh_unreal_2` UE project (a separate repo the session may run from). No "RH" / "3dsource" in files or git history.
+- This tool lives **only** in `light-rig-scaler` @ `main`. Do **not** save project changes into the `rh_unreal_2` UE project (a separate repo the session may run from).
 - The UE meshes & their dimensions live in `D:\GitHub\RestorationHardware` (read-only; mesh bounds were dumped via a UE Python snippet — see git history / chat).
 
 ## Getting started in Claude Code
