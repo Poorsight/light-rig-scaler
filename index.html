@@ -873,8 +873,8 @@ if (typeof document !== "undefined"){
     if (status){ status.style.display = "block"; status.textContent = prefix ? "Checking server renders..." : "This preset has no server render prefix."; }
     if (!prefix) return;
     const requiredView = rbRequiredViewForPreset(presetName);
-    if (requiredView && view !== requiredView){
-      if (status) status.textContent = `Server renders for this preset are available only in ${requiredView}.`;
+    if (requiredView && (view === "TQR" || view === "TQL") && view !== requiredView){
+      if (status) status.textContent = `TQ server renders for this preset are available only in ${requiredView}.`;
       return;
     }
 

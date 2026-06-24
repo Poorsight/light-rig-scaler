@@ -16,7 +16,8 @@ into Unreal via `Ctrl + V`.
 Render previews are loaded from the server when matching files exist under
 `Renders/<material>/<render-prefix>_<shot-suffix>.png` next to `index.html`.
 There is no browser drag-drop upload; missing render files are simply hidden.
-Left-arm presets show server renders only in `TQ-L`; right-arm presets only in `TQ-R`.
+For TQ shots, left-arm presets show server renders only in `TQ-L`;
+right-arm presets only in `TQ-R`. `F` and `FH` renders stay available.
 The bundled default preset is `KOPER_LEFT_ARM_L_SECTIONAL_prod39250480`
 with dimensions `453 x 274 x 77`.
 

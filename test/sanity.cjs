@@ -51,6 +51,8 @@ check("render previews: Left Arm -> TQL, Right Arm -> TQR",
   rbRequiredViewForPreset("KOPER_LEFT_ARM_L_SECTIONAL_prod39250480") === "TQL" &&
   rbRequiredViewForPreset("Borgo · Right-Arm L (39250511)") === "TQR" &&
   rbRequiredViewForPreset("Koper · U (39250483)") === "");
+check("render previews: arm side gates only opposite TQ views",
+  /requiredView && \(view === "TQR" \|\| view === "TQL"\) && view !== requiredView/.test(html));
 for (const v of views) {
   const out = gen(v);
   const actors = (out.match(/Begin Actor/g) || []).length;
