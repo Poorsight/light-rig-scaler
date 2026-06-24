@@ -74,9 +74,9 @@
   .field .top label{margin:0}
   .field .num{width:88px;text-align:right}
   .field input[type=range]{width:100%;margin-top:6px;accent-color:var(--accent)}
-  .presetbar{display:flex;gap:8px;margin-bottom:14px}
-  .presetbar select{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font-size:13px}
-  .ibtn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 11px;font-size:13px;cursor:pointer}
+  .presetbar{display:flex;gap:8px;margin-bottom:14px;align-items:stretch}
+  .presetbar select{flex:1 1 auto;min-width:0;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font-size:13px}
+  .ibtn{flex:0 0 auto;white-space:nowrap;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 11px;font-size:13px;cursor:pointer}
   .ibtn:hover{border-color:var(--accent)}
   .warn{margin-top:12px;display:flex;flex-direction:column;gap:6px}
   .warn .w{font-size:12px;padding:8px 10px;border-radius:8px;border:1px solid #5c4a16;background:#241f10;color:#e7c66b}
