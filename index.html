@@ -436,28 +436,28 @@ End Map`;
    pitch, yaw). Everything else comes from LIGHT_BASE. The single TEMPLATE above is the
    shared skeleton — generateT3D rewrites position / rotation / intensity / size per view. */
 const VIEWS = {
-  F: { label:"F · Front", desc:"Front, sofa not rotated.", lights:{
+  F: { label:"F · Front", desc:"Front, sofa not rotated.", rot:0, lights:{
     front_fill_lgt:   { pos:[0,696,52],             I:6.0,  pitch:4,   yaw:-90 },
     left_rim_lgt:     { pos:[-508,-200,242.441086], I:50.0, pitch:-43, yaw:4 },
     main_key_lgt:     { pos:[-445,130,232.610977],  I:45.0, pitch:-25, yaw:-11 },
     right_bounce_lgt: { pos:[372,240,150],          I:0.5,  pitch:0,   yaw:-140 },
     right_rim_lgt:    { pos:[349,91,63],            I:0.3,  pitch:0,   yaw:180 },
   }},
-  FH: { label:"FH · Front-high", desc:"Front, camera raised. Re-tuned intensities + a few positions vs F.", lights:{
+  FH: { label:"FH · Front-high", desc:"Front, camera raised. Re-tuned intensities + a few positions vs F.", rot:0, lights:{
     front_fill_lgt:   { pos:[0,696,52],             I:4.0,  pitch:4,   yaw:-90 },
     left_rim_lgt:     { pos:[-508,-200,242.441086], I:60.0, pitch:-43, yaw:4 },
     main_key_lgt:     { pos:[-414,130,232.610977],  I:45.0, pitch:-25, yaw:-11 },
     right_bounce_lgt: { pos:[283,323,150],          I:0.5,  pitch:0,   yaw:-140 },
     right_rim_lgt:    { pos:[245,-73,230],          I:1.0,  pitch:0,   yaw:157.21875 },
   }},
-  TQR: { label:"TQ · ¾ right-arm", desc:"Three-quarter, sofa +30°. For right-arm sectionals.", lights:{
+  TQR: { label:"TQ · ¾ right-arm", desc:"Three-quarter, sofa +30°. For right-arm sectionals.", rot:30, lights:{
     front_fill_lgt:   { pos:[0,696,52],             I:8.0,  pitch:4,   yaw:-90 },
     left_rim_lgt:     { pos:[-433,-190,242.441071], I:50.0, pitch:-43, yaw:4 },
     main_key_lgt:     { pos:[-474,-19,168],         I:60.0, pitch:-18, yaw:28 },
     right_bounce_lgt: { pos:[283,323,150],          I:0.5,  pitch:0,   yaw:-140 },
     right_rim_lgt:    { pos:[385,63,56],            I:0.6,  pitch:0,   yaw:153 },
   }},
-  TQL: { label:"TQ · ¾ left-arm", desc:"Three-quarter, sofa −60°. For left-arm sectionals.", lights:{
+  TQL: { label:"TQ · ¾ left-arm", desc:"Three-quarter, sofa −60°. For left-arm sectionals.", rot:-60, lights:{
     front_fill_lgt:   { pos:[0,696,52],             I:6.0,  pitch:4,   yaw:-90 },
     left_rim_lgt:     { pos:[-433,-190,242.441071], I:50.0, pitch:-43, yaw:4 },
     main_key_lgt:     { pos:[-474,-19,168],         I:60.0, pitch:-25, yaw:3 },
@@ -595,10 +595,13 @@ if (typeof document !== "undefined"){
 
   // Top-down schematic (X·Y). World coords map straight to the viewBox; +Y points
   // down (toward the camera/front). Sizes are in world units so it scales with the view.
-  function renderDiagram(res, sofaX, sofaY, H){
+  function renderDiagram(res, sofaX, sofaY, H, sofaRot){
     const svg = $("diagram"); if (!svg) return;
     const names = Object.keys(res);
-    let minX = -sofaX/2, maxX = sofaX/2, minY = -sofaY/2, maxY = sofaY/2;
+    const rr = (sofaRot || 0) * Math.PI/180;   // sofa yaw for this shot (TQ views)
+    const ahx = Math.abs((sofaX/2)*Math.cos(rr)) + Math.abs((sofaY/2)*Math.sin(rr));  // rotated AABB half-extents
+    const ahy = Math.abs((sofaX/2)*Math.sin(rr)) + Math.abs((sofaY/2)*Math.cos(rr));
+    let minX = -ahx, maxX = ahx, minY = -ahy, maxY = ahy;
     for (const n of names){ const [x,y] = res[n].pos;
       minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y); }
     const pad = (Math.max(maxX-minX, maxY-minY) || 1)*0.10 + 60;
@@ -639,9 +642,11 @@ if (typeof document !== "undefined"){
       marks += `<text x="${x}" y="${y+dot*2.6}" fill="#7c8493" font-size="${fs*0.78}" text-anchor="middle" font-family="system-ui">z ${Math.round(r.pos[2])}</text>`;
     }
     const sofa =
-      `<rect x="${-hx}" y="${-hy}" width="${sofaX}" height="${sofaY}" rx="${rx}" fill="#2a2f3a" stroke="#566173" stroke-width="${sw*1.4}"/>` +
-      `<rect x="${-hx}" y="${-hy}" width="${sofaX}" height="${Math.min(sofaY*0.24, u*0.05)}" rx="${rx*0.6}" fill="#3a4150"/>` +
-      `<text x="0" y="${hy+fs*1.5}" fill="#9aa1ad" font-size="${fs}" text-anchor="middle" font-family="system-ui">sofa ${Math.round(sofaX)}×${Math.round(sofaY)}</text>`;
+      `<g transform="rotate(${sofaRot||0})">` +
+        `<rect x="${-hx}" y="${-hy}" width="${sofaX}" height="${sofaY}" rx="${rx}" fill="#2a2f3a" stroke="#566173" stroke-width="${sw*1.4}"/>` +
+        `<rect x="${-hx}" y="${-hy}" width="${sofaX}" height="${Math.min(sofaY*0.24, u*0.05)}" rx="${rx*0.6}" fill="#3a4150"/>` +
+      `</g>` +
+      `<text x="0" y="${ahy+fs*1.5}" fill="#9aa1ad" font-size="${fs}" text-anchor="middle" font-family="system-ui">sofa ${Math.round(sofaX)}×${Math.round(sofaY)}${sofaRot ? "  ·  ⟳ "+sofaRot+"°" : ""}</text>`;
     const hints = `<text x="0" y="${maxY-fs*0.4}" fill="#6b7280" font-size="${fs*0.85}" text-anchor="middle" font-family="system-ui">▼ front / camera (+Y) · grid ${step}cm</text>`;
     svg.innerHTML = grid + cones + sofa + marks + hints;
   }
@@ -719,7 +724,7 @@ if (typeof document !== "undefined"){
     $("out").value = generateT3D(res);
 
     const sofaX = swap ? D : W, sofaY = swap ? W : D;
-    renderDiagram(res, sofaX, sofaY, H);
+    renderDiagram(res, sofaX, sofaY, H, (VIEWS[view] || VIEWS.F).rot || 0);
     renderSideView(res, sofaX, H);
     renderWarnings(W, D, H, mode, swap, ref, res);
     writeURL(W, D, H, mode, swap, ref);
