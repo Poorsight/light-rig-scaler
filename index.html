@@ -43,9 +43,10 @@
   textarea{width:100%;height:300px;background:#0f1115;border:1px solid var(--line);color:#cdd3db;
     border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px;resize:vertical;white-space:pre}
   table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
-  th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono)}
+  th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
   th{color:var(--muted);font-weight:600;text-align:right}
   td:first-child,th:first-child{text-align:left}
+  .tblwrap{overflow-x:auto;max-width:100%}
   .tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:5px;background:var(--panel2);
     color:var(--muted);border:1px solid var(--line)}
   .note{font-size:12px;color:var(--muted);margin-top:12px;border-left:2px solid var(--line);padding-left:10px}
@@ -207,13 +208,15 @@
 
     <details class="sub" open>
       <summary>Per-light breakdown</summary>
+      <div class="tblwrap">
       <table id="tbl">
         <thead>
-          <tr><th>Light</th><th>type</th><th>X</th><th>Y</th><th>Z</th><th>k</th><th>Intensity</th><th>p</th></tr>
+          <tr><th>Light</th><th>type</th><th>X</th><th>Y</th><th>Z</th><th>Rot P·Y·R</th><th>Intensity</th><th>Size</th><th>Atten</th><th>k</th><th>p</th></tr>
         </thead>
         <tbody></tbody>
       </table>
-      <p class="note"><b>p</b> — effective falloff exponent: Intensity ∝ k<sup>p</sup> (mode B). p ≈ 2 is inverse-square (small/sharp sources); p &lt; 2 is gentler (large soft sources, near field). Mode A always uses k² (p = 2).</p>
+      </div>
+      <p class="note">Every field <code>generateT3D</code> writes. <b>Size</b>: rect = W×H (·b BarnDoorLength), spot = r SourceRadius (·s SoftSourceRadius). <b>Atten</b> = AttenuationRadius. <b>Rot</b> = Pitch·Yaw·Roll (per shot, not scaled). The grey tag next to Intensity is the source value. <b>p</b> = falloff exponent (mode B); mode A uses k² (p = 2).</p>
     </details>
   </section>
 
@@ -733,12 +736,20 @@ if (typeof document !== "undefined"){
     body.innerHTML = "";
     for (const [name, r] of Object.entries(res)){
       const tr = document.createElement("tr");
+      const rot = `${+r.pitch.toFixed(1)} / ${+r.yaw.toFixed(1)} / ${+r.roll.toFixed(1)}`;
+      const size = r.type === "rect"
+        ? `${Math.round(r.w)}×${Math.round(r.h)}${r.barn ? " ·b" + Math.round(r.barn) : ""}`
+        : `r${r.radius.toFixed(1)}${r.soft != null ? " ·s" + r.soft.toFixed(1) : ""}`;
+      const atten = r.atten != null ? Math.round(r.atten) : "—";
       tr.innerHTML =
         `<td>${name.replace(/_lgt$/,"")}</td>` +
         `<td><span class="tag">${r.type}</span></td>` +
         `<td>${r.pos[0].toFixed(1)}</td><td>${r.pos[1].toFixed(1)}</td><td>${r.pos[2].toFixed(1)}</td>` +
-        `<td>${r.k.toFixed(3)}</td>` +
-        `<td>${r.intensity.toFixed(3)} <span class="tag">${r.I0}</span></td>` +
+        `<td>${rot}</td>` +
+        `<td>${r.intensity.toFixed(2)} <span class="tag">${r.I0}</span></td>` +
+        `<td>${size}</td>` +
+        `<td>${atten}</td>` +
+        `<td>${r.k.toFixed(2)}</td>` +
         `<td>${(mode==="A"?2:r.p).toFixed(2)}</td>`;
       body.appendChild(tr);
     }
