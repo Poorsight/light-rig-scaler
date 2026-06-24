@@ -21,6 +21,7 @@ All logic is in a single `index.html` — no build, no dependencies.
 - **Sofa presets:** reference + 17 RH sectional models (UPH bounds measured in the UE project), plus user presets in `localStorage`.
 - **Diagrams:** top view (X·Y, TQ sofa drawn rotated by its shot angle) and side view (X·Z, heights & pitch), with a cm grid and a role|temperature color toggle.
 - **Warnings** (scale magnitude, aspect mismatch, peak intensity), **shareable URL** (state in the hash), **sliders**, copy / copy-link.
+- **Render previews** (branch `feature/preview-renders`): drag-drop preview images per `(preset × shot)`, per-image comments, many per group; stored in the browser via **IndexedDB** (`lrs_renders`), with **Export/Import** (`.json`). Local to the browser — not committed to the repo; Export is the way to back up / share.
 
 ## Architecture
 Single self-contained `index.html`:

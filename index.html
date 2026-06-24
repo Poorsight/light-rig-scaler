@@ -109,6 +109,21 @@
   details.sec>summary::before{content:"▸";font-size:11px;color:var(--muted);transition:transform .15s}
   details.sec[open]>summary{margin-bottom:12px}
   details.sec[open]>summary::before{transform:rotate(90deg)}
+  /* render board */
+  .rb{grid-column:1 / -1}
+  .rb .ctx{font-size:13px;color:var(--muted);margin-bottom:10px}
+  .rb .ctx b{color:var(--txt)}
+  .drop{border:1.5px dashed var(--line);border-radius:10px;padding:20px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;transition:border-color .15s,background .15s}
+  .drop.over{border-color:var(--accent);background:#13242a;color:var(--txt)}
+  .rbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:12px}
+  .rbcard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+  .rbcard img{width:100%;height:150px;object-fit:cover;background:#0f1115;cursor:zoom-in;display:block}
+  .rbcard textarea{border:none;border-top:1px solid var(--line);background:transparent;color:var(--txt);font-family:inherit;font-size:12px;padding:8px;resize:vertical;min-height:44px;width:100%;box-sizing:border-box}
+  .rbcard textarea:focus{outline:none;background:#0f1115}
+  .rbcard .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;font-size:11px;color:var(--muted);border-top:1px solid var(--line)}
+  .rbcard .meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rbcard .meta button{background:none;border:none;color:#e0746a;cursor:pointer;font-size:11px;flex:none}
+  .rbbar{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -240,6 +255,21 @@
       <span class="it"><span class="sw" style="background:#4fd1c5"></span>right rim (rect)</span>
       <span class="it"><span class="sw" style="background:#7bd88f"></span>right bounce (rect)</span>
       <span class="it" style="margin-left:auto">grid = cm · ● spot cone · ▬ rect panel · arrow = aim · brighter glow = higher intensity</span>
+    </div>
+  </section>
+
+  <!-- ── Render previews ─────────────────────── -->
+  <section class="panel rb">
+    <h2>Render previews</h2>
+    <div class="ctx">Renders for <b id="rbCtx">—</b> · <span id="rbCount">0</span> image(s) · many per preset × shot</div>
+    <div id="drop" class="drop">⬆ Drag &amp; drop render images here, or click to choose</div>
+    <input id="rbFile" type="file" accept="image/*" multiple hidden />
+    <div id="rbGrid" class="rbgrid"></div>
+    <div class="rbbar">
+      <button id="rbExport" class="ibtn">⤓ Export board (.json)</button>
+      <button id="rbImport" class="ibtn">⤒ Import board</button>
+      <input id="rbImportFile" type="file" accept="application/json,.json" hidden />
+      <span style="font-size:12px;color:var(--muted)">Stored in this browser (IndexedDB) — use Export to back up / share / commit.</span>
     </div>
   </section>
 
@@ -753,6 +783,9 @@ if (typeof document !== "undefined"){
         `<td>${(mode==="A"?2:r.p).toFixed(2)}</td>`;
       body.appendChild(tr);
     }
+
+    const g = $("preset").value + "❘" + view;          // refresh the render board only when preset/shot changes
+    if (g !== lastGroup){ lastGroup = g; renderBoard(); }
   }
 
   /* state → URL hash (shareable link) */
@@ -797,6 +830,71 @@ if (typeof document !== "undefined"){
     $("H").value = p.H; $("Hs").value = p.H;
   }
 
+  /* ── Render board: drag-drop preview images per (preset × shot), stored in IndexedDB ── */
+  let lastGroup = null, rbUrls = [];
+  const RB_DB = "lrs_renders", RB_STORE = "renders";
+  function rbStore(mode){
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(RB_DB, 1);
+      r.onupgradeneeded = () => { const s = r.result.createObjectStore(RB_STORE, { keyPath:"id", autoIncrement:true }); s.createIndex("group", "group", { unique:false }); };
+      r.onsuccess = () => res(r.result.transaction(RB_STORE, mode).objectStore(RB_STORE));
+      r.onerror = () => rej(r.error);
+    });
+  }
+  const rbReq = q => new Promise((res, rej) => { q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+  async function rbAdd(rec){ return rbReq((await rbStore("readwrite")).add(rec)); }
+  async function rbPut(rec){ return rbReq((await rbStore("readwrite")).put(rec)); }
+  async function rbDel(id){ return rbReq((await rbStore("readwrite")).delete(id)); }
+  function rbCursor(src){ return new Promise((res, rej) => { const out=[]; const c=src.openCursor();
+    c.onsuccess = e => { const cur=e.target.result; if (cur){ out.push(cur.value); cur.continue(); } else res(out); }; c.onerror = () => rej(c.error); }); }
+  async function rbByGroup(g){ const s = await rbStore("readonly"); return rbCursorOn(s.index("group"), g); }
+  function rbCursorOn(idx, key){ return new Promise((res, rej) => { const out=[]; const c=idx.openCursor(IDBKeyRange.only(key));
+    c.onsuccess = e => { const cur=e.target.result; if (cur){ out.push(cur.value); cur.continue(); } else res(out); }; c.onerror = () => rej(c.error); }); }
+  async function rbAllRecs(){ return rbCursor(await rbStore("readonly")); }
+  const rbGroup = () => `${$("preset").value} ❘ ${currentView()}`;
+
+  async function renderBoard(){
+    const grid = $("rbGrid"); if (!grid) return;
+    rbUrls.forEach(URL.revokeObjectURL); rbUrls = [];
+    $("rbCtx").textContent = `${$("preset").value} · ${currentView()}`;
+    let recs = [];
+    try { recs = await rbByGroup(rbGroup()); } catch(e){ grid.innerHTML = ""; $("rbCount").textContent = "0"; return; }
+    recs.sort((a,b) => a.ts - b.ts);
+    $("rbCount").textContent = recs.length;
+    grid.innerHTML = "";
+    for (const rec of recs){
+      const url = URL.createObjectURL(rec.blob); rbUrls.push(url);
+      const card = document.createElement("div"); card.className = "rbcard";
+      const img = document.createElement("img"); img.src = url; img.title = "open full size"; img.addEventListener("click", () => window.open(url, "_blank"));
+      const ta = document.createElement("textarea"); ta.value = rec.comment || ""; ta.placeholder = "comment…";
+      let timer; ta.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => { rec.comment = ta.value; rbPut(rec); }, 400); });
+      const meta = document.createElement("div"); meta.className = "meta";
+      const nm = document.createElement("span"); nm.textContent = rec.name || "render"; nm.title = rec.name || "";
+      const del = document.createElement("button"); del.textContent = "delete"; del.addEventListener("click", () => rbDel(rec.id).then(renderBoard));
+      meta.append(nm, del); card.append(img, ta, meta); grid.appendChild(card);
+    }
+  }
+  async function rbAddFiles(files){
+    const group = rbGroup(), preset = $("preset").value, view = currentView(); let n = 0;
+    for (const f of files){ if (!f.type || !f.type.startsWith("image/")) continue;
+      try { await rbAdd({ group, preset, view, name:f.name, type:f.type, blob:f, comment:"", ts:Date.now() }); n++; } catch(e){} }
+    if (n) renderBoard();
+  }
+  async function rbExport(){
+    let recs = []; try { recs = await rbAllRecs(); } catch(e){}
+    const items = await Promise.all(recs.map(r => new Promise(res => {
+      const fr = new FileReader(); fr.onload = () => res({ group:r.group, preset:r.preset, view:r.view, name:r.name, type:r.type, comment:r.comment, ts:r.ts, data:fr.result }); fr.readAsDataURL(r.blob);
+    })));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify({ version:1, items })], { type:"application/json" }));
+    a.download = "render-board.json"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  async function rbImport(file){
+    let obj; try { obj = JSON.parse(await file.text()); } catch(e){ flash("Bad JSON"); return; }
+    for (const it of (obj.items || [])){ try { const blob = await (await fetch(it.data)).blob();
+      await rbAdd({ group:it.group, preset:it.preset, view:it.view, name:it.name, type:it.type, blob, comment:it.comment||"", ts:it.ts||Date.now() }); } catch(e){} }
+    renderBoard();
+  }
+
   /* wiring */
   [["W","Ws"],["D","Ds"],["H","Hs"]].forEach(([n,s]) => {
     $(n).addEventListener("input", () => { $(s).value = $(n).value; render(); });
@@ -831,6 +929,21 @@ if (typeof document !== "undefined"){
     const u = userPresets(); delete u[name]; setUserPresets(u);
     refreshPresets("Reference (453 × 274 × 77)");
   });
+
+  /* render board wiring */
+  {
+    const dz = $("drop");
+    if (dz){
+      dz.addEventListener("click", () => $("rbFile").click());
+      $("rbFile").addEventListener("change", e => { rbAddFiles(e.target.files); e.target.value = ""; });
+      dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("over"); });
+      dz.addEventListener("dragleave", () => dz.classList.remove("over"));
+      dz.addEventListener("drop", e => { e.preventDefault(); dz.classList.remove("over"); if (e.dataTransfer) rbAddFiles(e.dataTransfer.files); });
+      $("rbExport").addEventListener("click", rbExport);
+      $("rbImport").addEventListener("click", () => $("rbImportFile").click());
+      $("rbImportFile").addEventListener("change", e => { if (e.target.files[0]) rbImport(e.target.files[0]); e.target.value = ""; });
+    }
+  }
 
   /* init */
   refreshPresets();
