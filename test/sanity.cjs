@@ -14,11 +14,8 @@ if (!m) {
   process.exit(1);
 }
 
-// The script guards its UI in `if (typeof document !== "undefined")`, so under
-// node only the pure logic + module.exports run.
 const tmp = path.join(__dirname, "_lightrig.tmp.cjs");
 fs.writeFileSync(tmp, m[1]);
-
 let L;
 try {
   L = require(tmp);
@@ -26,7 +23,7 @@ try {
   fs.unlinkSync(tmp);
 }
 
-const { REF_DEFAULT, TEMPLATE, computeAll, generateT3D } = L;
+const { REF_DEFAULT, TEMPLATE, VIEWS, computeAll, generateT3D } = L;
 
 let failed = 0;
 function check(name, cond) {
@@ -34,28 +31,36 @@ function check(name, cond) {
   if (!cond) failed++;
 }
 
-// 1. Identity: reference dimensions reproduce the source rig byte-for-byte.
-check(
-  "identity A (453x274x77) === TEMPLATE",
-  generateT3D(computeAll(453, 274, 77, "A", false, REF_DEFAULT)) === TEMPLATE
-);
-check(
-  "identity B (453x274x77) === TEMPLATE",
-  generateT3D(computeAll(453, 274, 77, "B", false, REF_DEFAULT)) === TEMPLATE
-);
+const tmplLines = TEMPLATE.split("\n").length;
+const gen = (v, mode) => generateT3D(computeAll(453, 274, 77, mode || "A", false, REF_DEFAULT, v));
 
-// 2. A scaled case changes the output but preserves structure.
-const scaled = generateT3D(computeAll(600, 300, 80, "A", false, REF_DEFAULT));
-check("scaled (600x300x80) differs from TEMPLATE", scaled !== TEMPLATE);
-check("scaled keeps 5 actors", (scaled.match(/Begin Actor/g) || []).length === 5);
-check(
-  "scaled keeps line count",
-  scaled.split("\n").length === TEMPLATE.split("\n").length
-);
+// 1. F view at reference reproduces the source skeleton byte-for-byte (both modes).
+check("identity F / mode A === TEMPLATE", gen("F", "A") === TEMPLATE);
+check("identity F / mode B === TEMPLATE", gen("F", "B") === TEMPLATE);
 
-// 3. No branding leaks into generated output.
-check("no 'RH' in output", !/RH/.test(scaled));
-check("no '3dsource' in output", !/3dsource/i.test(scaled));
+// 2. Every view generates valid, structurally-identical, brand-free T3D.
+const views = Object.keys(VIEWS);
+check("VIEWS = [F, FH, TQR, TQL]", views.join(",") === "F,FH,TQR,TQL");
+for (const v of views) {
+  const out = gen(v);
+  const actors = (out.match(/Begin Actor/g) || []).length;
+  check(`${v}: 5 actors, same line count, no brand`,
+    actors === 5 && out.split("\n").length === tmplLines && !/RH/.test(out) && !/3dsource/i.test(out));
+}
+
+// 3. Per-view rotations are written correctly (key + right_rim differ per shot).
+const has = (v, s) => gen(v).includes(s);
+check("F   key Yaw=-11, right_rim Yaw=180", has("F","Yaw=-11.000000") && has("F","Yaw=180.000000"));
+check("FH  right_rim Yaw=157.218750",        has("FH","Yaw=157.218750"));
+check("TQR key Pitch=-18, Yaw=28; rim Yaw=153", has("TQR","Pitch=-18.000000") && has("TQR","Yaw=28.000000") && has("TQR","Yaw=153.000000"));
+check("TQL key Yaw=3; rim Yaw=166.5",        has("TQL","Yaw=3.000000") && has("TQL","Yaw=166.500000"));
+
+// 4. Scaling still works (F, scaled): output changes, structure preserved.
+const scaled = gen("F"); // ref
+const big = generateT3D(computeAll(600, 300, 80, "A", false, REF_DEFAULT, "F"));
+check("scaled F (600x300x80) differs from reference", big !== scaled);
+check("scaled F keeps 5 actors + line count",
+  (big.match(/Begin Actor/g) || []).length === 5 && big.split("\n").length === tmplLines);
 
 if (failed) {
   console.error(`\n${failed} check(s) FAILED`);

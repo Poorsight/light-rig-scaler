@@ -119,7 +119,16 @@
 <main>
   <!-- ── Controls ───────────────────────────── -->
   <section class="panel">
-    <h2>Sofa dimensions (cm)</h2>
+    <h2>Shot / view</h2>
+    <span class="seg" id="viewseg">
+      <input type="radio" name="view" id="vF" value="F" checked /><label for="vF">F</label>
+      <input type="radio" name="view" id="vFH" value="FH" /><label for="vFH">FH</label>
+      <input type="radio" name="view" id="vTQR" value="TQR" /><label for="vTQR">TQ-R</label>
+      <input type="radio" name="view" id="vTQL" value="TQL" /><label for="vTQL">TQ-L</label>
+    </span>
+    <p class="note" id="viewdesc" style="margin-top:8px"></p>
+
+    <h2 style="margin-top:18px">Sofa dimensions (cm)</h2>
     <div class="presetbar">
       <select id="preset" title="Presets"></select>
       <button id="savePreset" class="ibtn" title="Save current as a preset">＋ Save</button>
@@ -196,7 +205,7 @@
     </div>
     <textarea id="out" spellcheck="false" readonly></textarea>
 
-    <details class="sub">
+    <details class="sub" open>
       <summary>Per-light breakdown</summary>
       <table id="tbl">
         <thead>
@@ -273,13 +282,13 @@
 /* ── Reference (the rig is tuned for this sofa) ─────────────────── */
 const REF_DEFAULT = { W:453, D:274, H:77 };
 
-/* Base light values = exactly those in the source T3D. */
-const LIGHTS = {
-  front_fill_lgt:   { type:"rect", pos:[0,696,52],            I:6.0,  w:500,        h:500,        barn:0,  atten:null },
-  left_rim_lgt:     { type:"spot", pos:[-508,-200,242.441086],I:50.0, radius:256.0,               soft:25, atten:null },
-  main_key_lgt:     { type:"spot", pos:[-445,130,232.610977], I:45.0, radius:52.479965,           soft:null, atten:null },
-  right_bounce_lgt: { type:"rect", pos:[372,240,150],         I:0.5,  w:256,        h:256,        barn:25, atten:600 },
-  right_rim_lgt:    { type:"rect", pos:[349,91,63],           I:0.3,  w:91.440002,  h:60.900002,  barn:0,  atten:600 },
+/* Per-light constants shared by every view (sizes, attenuation, roll, cone, role color, white-balance K). */
+const LIGHT_BASE = {
+  front_fill_lgt:   { type:"rect", w:500,        h:500,        barn:0,  atten:null, roll:0,        cone:null, label:"fill",   color:"#6db7ff", temp:6500 },
+  left_rim_lgt:     { type:"spot", radius:256.0,               soft:25, atten:null, roll:0.382830, cone:90,   label:"L rim",  color:"#c98bff", temp:6500 },
+  main_key_lgt:     { type:"spot", radius:52.479965,           soft:null, atten:null, roll:0,      cone:37,   label:"key",    color:"#ffcf5a", temp:6500 },
+  right_bounce_lgt: { type:"rect", w:256,        h:256,        barn:25, atten:600,  roll:0,        cone:null, label:"bounce", color:"#7bd88f", temp:6000 },
+  right_rim_lgt:    { type:"rect", w:91.440002,  h:60.900002,  barn:0,  atten:600,  roll:0,        cone:null, label:"R rim",  color:"#4fd1c5", temp:6000 },
 };
 
 /* Source T3D — only numeric fields are mutated; the structure stays 1:1. */
@@ -423,16 +432,58 @@ Begin Surface
 End Surface
 End Map`;
 
+/* Per-view rigs: only the fields that change between camera shots (position, intensity,
+   pitch, yaw). Everything else comes from LIGHT_BASE. The single TEMPLATE above is the
+   shared skeleton — generateT3D rewrites position / rotation / intensity / size per view. */
+const VIEWS = {
+  F: { label:"F · Front", desc:"Front, sofa not rotated.", lights:{
+    front_fill_lgt:   { pos:[0,696,52],             I:6.0,  pitch:4,   yaw:-90 },
+    left_rim_lgt:     { pos:[-508,-200,242.441086], I:50.0, pitch:-43, yaw:4 },
+    main_key_lgt:     { pos:[-445,130,232.610977],  I:45.0, pitch:-25, yaw:-11 },
+    right_bounce_lgt: { pos:[372,240,150],          I:0.5,  pitch:0,   yaw:-140 },
+    right_rim_lgt:    { pos:[349,91,63],            I:0.3,  pitch:0,   yaw:180 },
+  }},
+  FH: { label:"FH · Front-high", desc:"Front, camera raised. Re-tuned intensities + a few positions vs F.", lights:{
+    front_fill_lgt:   { pos:[0,696,52],             I:4.0,  pitch:4,   yaw:-90 },
+    left_rim_lgt:     { pos:[-508,-200,242.441086], I:60.0, pitch:-43, yaw:4 },
+    main_key_lgt:     { pos:[-414,130,232.610977],  I:45.0, pitch:-25, yaw:-11 },
+    right_bounce_lgt: { pos:[283,323,150],          I:0.5,  pitch:0,   yaw:-140 },
+    right_rim_lgt:    { pos:[245,-73,230],          I:1.0,  pitch:0,   yaw:157.21875 },
+  }},
+  TQR: { label:"TQ · ¾ right-arm", desc:"Three-quarter, sofa +30°. For right-arm sectionals.", lights:{
+    front_fill_lgt:   { pos:[0,696,52],             I:8.0,  pitch:4,   yaw:-90 },
+    left_rim_lgt:     { pos:[-433,-190,242.441071], I:50.0, pitch:-43, yaw:4 },
+    main_key_lgt:     { pos:[-474,-19,168],         I:60.0, pitch:-18, yaw:28 },
+    right_bounce_lgt: { pos:[283,323,150],          I:0.5,  pitch:0,   yaw:-140 },
+    right_rim_lgt:    { pos:[385,63,56],            I:0.6,  pitch:0,   yaw:153 },
+  }},
+  TQL: { label:"TQ · ¾ left-arm", desc:"Three-quarter, sofa −60°. For left-arm sectionals.", lights:{
+    front_fill_lgt:   { pos:[0,696,52],             I:6.0,  pitch:4,   yaw:-90 },
+    left_rim_lgt:     { pos:[-433,-190,242.441071], I:50.0, pitch:-43, yaw:4 },
+    main_key_lgt:     { pos:[-474,-19,168],         I:60.0, pitch:-25, yaw:3 },
+    right_bounce_lgt: { pos:[283,323,150],          I:0.5,  pitch:0,   yaw:-140 },
+    right_rim_lgt:    { pos:[385,63,56],            I:1.0,  pitch:0,   yaw:166.5 },
+  }},
+};
+
+/* Merge LIGHT_BASE + a view's per-light overrides into a full light set. */
+function viewLights(view){
+  const V = VIEWS[view] || VIEWS.F, out = {};
+  for (const n in LIGHT_BASE) out[n] = Object.assign({}, LIGHT_BASE[n], V.lights[n]);
+  return out;
+}
+
 /* ── Logic ──────────────────────────────────────────────────────── */
 const fmt = x => Number(x).toFixed(6);
 const hyp = (a,b,c) => Math.sqrt(a*a + b*b + c*c);
 
-function computeAll(W, D, H, mode, swap, ref){
+function computeAll(W, D, H, mode, swap, ref, view){
   const sX = (swap ? D : W) / ref.W;   // scale on world X (rig: 453 along X)
   const sY = (swap ? W : D) / ref.D;   // scale on world Y (rig: 274 along Y)
   const sZ = H / ref.H;                // scale on world Z (height)
+  const LG = viewLights(view);         // merged base + per-view rig for the chosen shot
   const res = {};
-  for (const [name, L] of Object.entries(LIGHTS)){
+  for (const [name, L] of Object.entries(LG)){
     const [x, y, z] = L.pos;
     const npos = [x * sX, y * sY, z * sZ];
     const d0 = hyp(x, y, z);
@@ -451,7 +502,9 @@ function computeAll(W, D, H, mode, swap, ref){
     }
 
     const r = { type:L.type, pos:npos, intensity:I_new, k, p, I0:L.I,
-                atten: L.atten != null ? L.atten * k : null };
+                atten: L.atten != null ? L.atten * k : null,
+                pitch:L.pitch, yaw:L.yaw, roll:L.roll || 0,   // rotation: per-view, not scaled
+                cone:L.cone, color:L.color, label:L.label, temp:L.temp };
     if (L.type === "rect"){
       r.w = L.w * sizeK; r.h = L.h * sizeK; r.barn = (L.barn || 0) * sizeK;
     } else {
@@ -469,6 +522,8 @@ function generateT3D(res){
     const r = res[m[1]];
     block = block.replace(/^(\s*)RelativeLocation=\([^)]*\)/m,
       `$1RelativeLocation=(X=${fmt(r.pos[0])},Y=${fmt(r.pos[1])},Z=${fmt(r.pos[2])})`);
+    block = block.replace(/^(\s*)RelativeRotation=\([^)]*\)/m,
+      `$1RelativeRotation=(Pitch=${fmt(r.pitch)},Yaw=${fmt(r.yaw)},Roll=${fmt(r.roll)})`);
     block = block.replace(/^(\s*)Intensity=.*$/m, `$1Intensity=${fmt(r.intensity)}`);
     if (r.type === "rect"){
       block = block.replace(/^(\s*)SourceWidth=.*$/m,  `$1SourceWidth=${fmt(r.w)}`);
@@ -487,7 +542,7 @@ function generateT3D(res){
 
 /* Export for node tests (no effect in the browser). */
 if (typeof module !== "undefined" && module.exports){
-  module.exports = { REF_DEFAULT, LIGHTS, TEMPLATE, computeAll, generateT3D, fmt, hyp };
+  module.exports = { REF_DEFAULT, LIGHT_BASE, VIEWS, viewLights, TEMPLATE, computeAll, generateT3D, fmt, hyp };
 }
 
 /* ── UI ─────────────────────────────────────────────────────────── */
@@ -495,14 +550,7 @@ if (typeof document !== "undefined"){
   const $ = id => document.getElementById(id);
   const num = (id, def) => { const v = parseFloat($(id).value); return (isFinite(v) && v > 0) ? v : def; };
 
-  /* Per-light visual metadata (yaw/pitch/cone from the T3D; role color; white-balance K). */
-  const VIZ = {
-    front_fill_lgt:   { yaw:-90,  pitch:4,   cone:null, label:"fill",   color:"#6db7ff", temp:6500 },
-    left_rim_lgt:     { yaw:4,    pitch:-43, cone:90,   label:"L rim",  color:"#c98bff", temp:6500 },
-    main_key_lgt:     { yaw:-11,  pitch:-25, cone:37,   label:"key",    color:"#ffcf5a", temp:6500 },
-    right_bounce_lgt: { yaw:-140, pitch:0,   cone:null, label:"bounce", color:"#7bd88f", temp:6000 },
-    right_rim_lgt:    { yaw:180,  pitch:0,   cone:null, label:"R rim",  color:"#4fd1c5", temp:6000 },
-  };
+  const currentView = () => (document.querySelector('input[name=view]:checked') || {}).value || "F";
 
   /* Presets: reference + RH sectional models (UPH bounds measured in the UE project) + your own (localStorage). */
   const BUILTIN = {
@@ -537,7 +585,7 @@ if (typeof document !== "undefined"){
     const c = v => Math.max(0, Math.min(255, Math.round(v || 0)));
     return `rgb(${c(r)},${c(g)},${c(b)})`;
   }
-  const colorOf = n => $("cbTemp").checked ? kelvinToColor((VIZ[n]||{}).temp || 6500) : (VIZ[n]||{}).color || "#cccccc";
+  const colorOf = r => $("cbTemp").checked ? kelvinToColor((r||{}).temp || 6500) : (r||{}).color || "#cccccc";
 
   /* "Nice" grid step so the cm labels stay round. */
   function niceStep(span){
@@ -573,12 +621,12 @@ if (typeof document !== "undefined"){
 
     let cones = "", marks = "";
     for (const n of names){
-      const r = res[n], v = VIZ[n] || { yaw:0, cone:null, label:n }, col = colorOf(n);
+      const r = res[n], col = colorOf(r);
       const [x,y] = r.pos;
-      const a = v.yaw*Math.PI/180, fx = Math.cos(a), fy = Math.sin(a);
+      const a = (r.yaw||0)*Math.PI/180, fx = Math.cos(a), fy = Math.sin(a);
       const thr = Math.hypot(x,y) || u*0.3, len = Math.max(thr*0.9, u*0.12);
       const op = (0.10 + 0.28*Math.sqrt(r.intensity/maxI)).toFixed(3);
-      const half = (r.type==="spot" ? (v.cone||30) : 26)*Math.PI/180;
+      const half = (r.type==="spot" ? (r.cone||30) : 26)*Math.PI/180;
       const cl = (r.type==="spot" ? len : len*0.5);
       const e1x = fx*Math.cos(half)-fy*Math.sin(half), e1y = fx*Math.sin(half)+fy*Math.cos(half);
       const e2x = fx*Math.cos(-half)-fy*Math.sin(-half), e2y = fx*Math.sin(-half)+fy*Math.cos(-half);
@@ -587,7 +635,7 @@ if (typeof document !== "undefined"){
       if (r.type==="spot") marks += `<circle cx="${x}" cy="${y}" r="${dot}" fill="${col}" stroke="#0f1115" stroke-width="${sw*0.6}"/>`;
       else { const pw = Math.min(r.w||100, u*0.20)/2, px=-fy, py=fx;
         marks += `<line x1="${x-px*pw}" y1="${y-py*pw}" x2="${x+px*pw}" y2="${y+py*pw}" stroke="${col}" stroke-width="${sw*2.6}" stroke-linecap="round"/>`; }
-      marks += `<text x="${x}" y="${y-dot*1.7}" fill="${col}" font-size="${fs}" text-anchor="middle" font-family="system-ui">${v.label} · ${r.intensity.toFixed(1)}</text>`;
+      marks += `<text x="${x}" y="${y-dot*1.7}" fill="${col}" font-size="${fs}" text-anchor="middle" font-family="system-ui">${r.label||n} · ${r.intensity.toFixed(1)}</text>`;
       marks += `<text x="${x}" y="${y+dot*2.6}" fill="#7c8493" font-size="${fs*0.78}" text-anchor="middle" font-family="system-ui">z ${Math.round(r.pos[2])}</text>`;
     }
     const sofa =
@@ -626,13 +674,13 @@ if (typeof document !== "undefined"){
       `<text x="0" y="${fs*1.4}" fill="#9aa1ad" font-size="${fs}" text-anchor="middle" font-family="system-ui">floor · sofa H=${Math.round(H)}</text>`;
     let marks = "";
     for (const n of names){
-      const r = res[n], v = VIZ[n] || { yaw:0, pitch:0, label:n }, col = colorOf(n);
+      const r = res[n], col = colorOf(r);
       const x = r.pos[0], z = r.pos[2], y = -z;
-      const a = v.yaw*Math.PI/180, pa = (v.pitch||0)*Math.PI/180;
+      const a = (r.yaw||0)*Math.PI/180, pa = (r.pitch||0)*Math.PI/180;
       const dx = Math.cos(pa)*Math.cos(a), dy = -Math.sin(pa), L = u*0.10;
       marks += `<line x1="${x}" y1="${y}" x2="${x+dx*L}" y2="${y+dy*L}" stroke="${col}" stroke-width="${sw}"/>`;
       marks += `<circle cx="${x}" cy="${y}" r="${dot}" fill="${col}" stroke="#0f1115" stroke-width="${sw*0.6}"/>`;
-      marks += `<text x="${x}" y="${y-dot*1.6}" fill="${col}" font-size="${fs}" text-anchor="middle" font-family="system-ui">${v.label} · z${Math.round(z)}</text>`;
+      marks += `<text x="${x}" y="${y-dot*1.6}" fill="${col}" font-size="${fs}" text-anchor="middle" font-family="system-ui">${r.label||n} · z${Math.round(z)}</text>`;
     }
     svg.innerHTML = grid + g + marks;
   }
@@ -664,8 +712,10 @@ if (typeof document !== "undefined"){
     const W = num("W", ref.W), D = num("D", ref.D), H = num("H", ref.H);
     const mode = document.querySelector('input[name=mode]:checked').value;
     const swap = $("swap").checked;
+    const view = currentView();
+    const vd = $("viewdesc"); if (vd) vd.textContent = (VIEWS[view] || VIEWS.F).desc;
 
-    const res = computeAll(W, D, H, mode, swap, ref);
+    const res = computeAll(W, D, H, mode, swap, ref, view);
     $("out").value = generateT3D(res);
 
     const sofaX = swap ? D : W, sofaY = swap ? W : D;
@@ -691,7 +741,7 @@ if (typeof document !== "undefined"){
 
   /* state → URL hash (shareable link) */
   function writeURL(W, D, H, mode, swap, ref){
-    const p = new URLSearchParams({ W, D, H, m:mode, sw:swap?1:0, rW:ref.W, rD:ref.D, rH:ref.H, cb:$("cbTemp").checked?"temp":"role" });
+    const p = new URLSearchParams({ v:currentView(), W, D, H, m:mode, sw:swap?1:0, rW:ref.W, rD:ref.D, rH:ref.H, cb:$("cbTemp").checked?"temp":"role" });
     history.replaceState(null, "", "#" + p.toString());
   }
   function readURL(){
@@ -699,6 +749,7 @@ if (typeof document !== "undefined"){
     const setv = (id, k) => { if (h.has(k)){ const e = $(id); if (e) e.value = h.get(k); } };
     setv("W","W"); setv("D","D"); setv("H","H"); setv("rW","rW"); setv("rD","rD"); setv("rH","rH");
     ["W","D","H"].forEach(n => { $(n+"s").value = $(n).value; });
+    if (h.has("v")){ const vr = document.querySelector(`input[name=view][value="${h.get("v")}"]`); if (vr) vr.checked = true; }
     if (h.get("m") === "B"){ const b = document.querySelector('input[name=mode][value=B]'); if (b) b.checked = true; }
     if (h.get("sw") === "1") $("swap").checked = true;
     if (h.get("cb") === "temp") $("cbTemp").checked = true;
@@ -736,7 +787,7 @@ if (typeof document !== "undefined"){
     $(s).addEventListener("input", () => { $(n).value = $(s).value; render(); });
   });
   ["rW","rD","rH","swap"].forEach(id => $(id).addEventListener("input", render));
-  document.querySelectorAll('input[name=mode], input[name=colorby]').forEach(el => el.addEventListener("change", render));
+  document.querySelectorAll('input[name=mode], input[name=colorby], input[name=view]').forEach(el => el.addEventListener("change", render));
 
   $("copy").addEventListener("click", () => copyText($("out").value).then(() => flash("Copied — Ctrl+V in the UE viewport")));
   $("copyLink").addEventListener("click", () => copyText(location.href).then(() => flash("Link copied")));
@@ -746,6 +797,7 @@ if (typeof document !== "undefined"){
     $("swap").checked = false;
     document.querySelector('input[name=mode][value=A]').checked = true;
     $("cbRole").checked = true;
+    $("vF").checked = true;
     render();
   });
   $("preset").addEventListener("change", () => {
