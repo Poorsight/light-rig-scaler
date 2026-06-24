@@ -1,118 +1,111 @@
 # ONBOARDING — Sectional Light Rig Scaler
 
-> Context for a new developer (and their Claude Code) to pick up the project
-> and embed the generator into their own site without further questions.
+> Context for a new developer (and their Claude Code) to pick up the project cold.
+> **Maintenance rule:** keep this file in sync with every substantive change — update it
+> (and `README.md`) in the same commit as the change.
 
 ## TL;DR
-A web tool: you enter the dimensions of a sectional sofa (Width × Depth × Height) →
-you get the **Unreal Engine T3D** of five light sources, which is pasted directly into
-the UE viewport via `Ctrl + V`. All the logic is in a single file, `index.html`,
-with no build step and no external dependencies.
+A web tool: pick a **camera shot**, enter the sectional sofa's dimensions (Width × Depth × Height) →
+get the **Unreal Engine T3D** of the 5-light rig, ready to paste into the UE viewport with `Ctrl + V`.
+All logic is in a single `index.html` — no build, no dependencies.
 
-- Repository: https://github.com/Poorsight/light-rig-scaler
+- Repository: https://github.com/Poorsight/light-rig-scaler  (branch `main`)
 - Online (GitHub Pages): https://poorsight.github.io/light-rig-scaler/
 - Locally: open `index.html` by double-clicking **or** `npx serve . -l 5500`
+- Tests: `npm test`  (Node 18+)
 
-## Task (typical)
-Embed this generator into another site/application. The reusable part is the
-**pure calculation and T3D generation functions**; the current UI is merely a wrapper around them.
+## Features
+- **Camera shots / views:** `F` (front), `FH` (front-high), `TQ-R` (¾, sofa +30°, right-arm sectionals), `TQ-L` (¾, sofa −60°, left-arm). Each shot is its own light rig.
+- **Size scaling** of the rig by sofa W/D/H, with a 90° rotate (swap) toggle.
+- **Two intensity models:** A (scale source sizes, `I·k²`, closest to the original — default) / B (fixed sizes, `I·k^p`).
+- **Sofa presets:** reference + 17 RH sectional models (UPH bounds measured in the UE project), plus user presets in `localStorage`.
+- **Diagrams:** top view (X·Y, TQ sofa drawn rotated by its shot angle) and side view (X·Z, heights & pitch), with a cm grid and a role|temperature color toggle.
+- **Warnings** (scale magnitude, aspect mismatch, peak intensity), **shareable URL** (state in the hash), **sliders**, copy / copy-link.
 
 ## Architecture
-A single self-contained `index.html`:
-- `<style>` — UI styling.
+Single self-contained `index.html`:
+- `<style>` — UI.
 - `<script>` — two parts:
-  1. **Pure logic** (this is what we reuse):
-     - `REF_DEFAULT = {W:453, D:274, H:77}` — the dimensions of the sofa for which the reference rig was tuned.
-     - `LIGHTS` — the base parameters of the 5 sources (name → position, intensity, type, dimensions).
-     - `TEMPLATE` — a string with the source T3D (a UE export of 5 actors).
-     - `computeAll(W, D, H, mode, swap, ref)` → an object of results for each source.
-     - `generateT3D(res)` → a T3D string, ready to be pasted into UE.
-     - `fmt`, `hyp` — formatting/distance utilities.
-     - At the bottom — `module.exports` under the guard `typeof module !== "undefined"` (for node tests).
-  2. **UI** — wrapped in `if (typeof document !== "undefined")`: attaches handlers, renders the table and the "Calculation formula" panel.
+  1. **Pure logic** (the reusable core):
+     - `REF_DEFAULT = {W:453, D:274, H:77}` — sofa the reference rig was tuned for.
+     - `LIGHT_BASE` — per-light **constants shared by every shot**: `type`, sizes (`w/h/barn` for rect | `radius/soft` for spot), `atten`, `roll`, `cone`, `label`, `color`, `temp`.
+     - `VIEWS` — per-shot rig data `{ F, FH, TQR, TQL }`; each `{ label, desc, rot, lights }` where `lights[name] = { pos:[x,y,z], I, pitch, yaw }` (only the fields that change between shots).
+     - `viewLights(view)` — merges `LIGHT_BASE` + `VIEWS[view].lights` into a full light set.
+     - `TEMPLATE` — one shared T3D skeleton (5 actors, structure of the F rig, asset paths neutralized to `/Game/LightRig/…`).
+     - `computeAll(W, D, H, mode, swap, ref, view)` → results object per light.
+     - `generateT3D(res)` → T3D string for pasting.
+     - `fmt`, `hyp` — utilities.
+     - `module.exports` (guarded by `typeof module !== "undefined"`) for node tests.
+  2. **UI** — wrapped in `if (typeof document !== "undefined")`: shot/preset/mode/color selectors, sliders, diagrams, warnings, table, URL state.
 
-## Input/output contract (the key thing for integration)
+## Input/output contract (for integration)
 ```js
-const res = computeAll(W, D, H, mode, swap, ref);
+const res = computeAll(W, D, H, mode, swap, ref, view);
 //   W, D, H — sofa dimensions, cm
-//   mode    — "A" (scale the source dimensions → I·k²)
-//           | "B" (fixed dimensions → I·k^p)
-//   swap    — bool: the sofa is rotated 90° (swaps the X↔Y axis mapping)
-//   ref     — {W,D,H} the rig reference (usually REF_DEFAULT)
+//   mode    — "A" (scale sizes → I·k²) | "B" (fixed sizes → I·k^p)
+//   swap    — bool: sofa rotated 90° (swaps the X↔Y axis mapping)
+//   ref     — {W,D,H} rig reference (usually REF_DEFAULT)
+//   view    — "F" | "FH" | "TQR" | "TQL"  (defaults to F)
 //
 // res[name] = {
-//   type,            // "rect" | "spot"
-//   pos: [x,y,z],    // new position
-//   intensity,       // new Intensity (Candelas)
-//   k, p, I0,        // coefficients/original intensity (for the table)
-//   atten,           // new AttenuationRadius | null
+//   type,                 // "rect" | "spot"
+//   pos:[x,y,z], intensity,
+//   pitch, yaw, roll,     // rotation for this shot (NOT scaled)
+//   k, p, I0, atten,      // diagnostics / new AttenuationRadius | null
+//   cone, color, label, temp,           // for the diagram
 //   // rect: w, h, barn   | spot: radius, soft
 // }
 
-const t3d = generateT3D(res);   // string → to the clipboard → Ctrl+V in UE
+const t3d = generateT3D(res);   // string → clipboard → Ctrl+V in UE
 ```
-`generateT3D` takes `TEMPLATE` and replaces **only the numeric fields** (position,
-intensity, source dimensions, AttenuationRadius) inside each actor,
-without touching the structure or rotations — so the result is always valid for pasting.
+`generateT3D` takes the single `TEMPLATE` skeleton and, per actor (matched by `ActorLabel`),
+rewrites only numeric fields — so the output is always valid for pasting and the structure is byte-stable.
 
-## Formula (full version — in the "Calculation formula" panel on the site itself)
-- Scale: `sX = W/453`, `sY = D/274`, `sZ = H/77` (with `swap`, X↔Y are swapped).
-- Position: `pos · s` per coordinate.
-- `k = |new_pos| / |old_pos|` — individual for each source.
+## Formula (full version is in the on-site "Calculation formula" panel)
+- Scale: `sX = W/453`, `sY = D/274`, `sZ = H/77` (with `swap`, X↔Y swap).
+- Position: `pos · s` per coordinate. `k = |new_pos| / |old_pos|` (per light).
 - Effective radius `R`: spot → `SourceRadius`; rect → `√(SourceWidth·SourceHeight / π)`.
-- Mode **A**: source dimensions `· k`, `Intensity · k²`.
-- Mode **B**: `Intensity · (k²·d² + R²) / (d² + R²) ≈ Intensity · k^p`, where `p = 2d²/(d²+R²)`.
-- `AttenuationRadius · k`. Rotations, color, temperature — unchanged.
-- **Axes:** world X ↔ width (453), Y ↔ depth (274), Z ↔ height (77).
-
-## How to embed it into a site
-1. **Extract the pure logic into a module.** The extraction boundary: all the code from `"use strict";` up to and including the `module.exports` block. Everything below is `if (typeof document !== "undefined") { … }` (the UI wrapper); for headless/library use it can be dropped (it is harmless but not needed).
-   - For ESM, replace the line `module.exports = {…}` with `export { REF_DEFAULT, LIGHTS, TEMPLATE, computeAll, generateT3D, fmt, hyp };`.
-   - `TEMPLATE` is an ordinary multi-line template literal with no backticks inside, and copies into a `.js/.mjs` as is.
-2. **Call** `generateT3D(computeAll(W, D, H, mode, swap, ref))`; put the result on the clipboard: `navigator.clipboard.writeText(t3d)` (fallback via `document.execCommand` — for non-secure contexts).
-3. Build your own UI — there are no external dependencies.
-
-**Runtime requirements:** the pure logic is ES2017+ (arrow functions, template literals, `Object.entries`, default parameters); the clipboard helper uses `async/await`. For evergreen browsers no transpilation is needed; for older runtimes, transpile the module yourself. There are no dependencies. The test runner is Node 18+ (for verification only, not for production).
-
-## Pitfalls
-- **Clipboard:** `navigator.clipboard` is available only in a secure context (https / localhost). On `file://` you need the fallback (it is present in the current code).
-- **Pasting into UE:** the asset paths in the T3D are neutralized to `/Game/LightRig/…`. Actors are created anew on paste, but it is worth verifying the paste in the viewport once.
-- **Don't break `TEMPLATE`:** you may change only the numeric values; the structure and rotations must not be changed, otherwise pasting may stop working.
+- Mode **A**: sizes `· k`, `Intensity · k²`. Mode **B**: `Intensity · (k²·d² + R²)/(d² + R²) ≈ Intensity · k^p`, `p = 2d²/(d²+R²)`.
+- `AttenuationRadius · k`. **Rotation is per-shot and not scaled**; color/temperature unchanged.
+- Axes: world X ↔ width (453), Y ↔ depth (274), Z ↔ height (77).
 
 ## What exactly generateT3D rewrites
-Inside each actor (the actor is located by `ActorLabel="…"`, which **must** match the key in `LIGHTS` and be unique) only the following are rewritten:
-- `RelativeLocation`, `Intensity`;
+Per actor (located by `ActorLabel="…"`, which **must** equal a `LIGHT_BASE` key and be unique):
+- `RelativeLocation`, `RelativeRotation` (Pitch/Yaw/Roll), `Intensity`;
 - rect: `SourceWidth`, `SourceHeight`, `BarnDoorLength`;  spot: `SourceRadius`, `SoftSourceRadius`;
 - `AttenuationRadius` (if present).
 
-Deliberately **not touched**: rotations, `Temperature`, cone angles, `ExportPath`. Each field must be on its own line of the form `^(spaces)Field=…` (the replacement matches the first occurrence in the block, without `/g`). To add a source = duplicate an entire `Begin Actor…End Actor` block with a unique `ActorLabel` and add the corresponding entry to `LIGHTS`.
+Deliberately **not touched**: `Temperature`, cone angles, `ExportPath`, the skeleton structure.
+Each field is on its own line `^(spaces)Field=…` (first match per block, regex without `/g`).
 
-## Regenerating the base rig (if the source rig in UE changed)
-⚠️ `LIGHTS` and `TEMPLATE` are **two independent, manually maintained representations of the same numbers**: `TEMPLATE` is mutated, `LIGHTS` is the source of numbers for `computeAll`. Update one and forget the other and the identity invariant silently breaks, and all scaled outputs become incorrect.
+## How to embed into a site
+1. **Extract the pure logic into a module:** everything from `"use strict";` up to and including `module.exports`. The block below (`if (typeof document !== "undefined")`) is the UI wrapper — drop it for headless use. For ESM, swap the `module.exports = {…}` line for `export { … }`.
+2. Call `generateT3D(computeAll(W, D, H, mode, swap, ref, view))`; put the result on the clipboard (`navigator.clipboard.writeText`, with a `document.execCommand` fallback for non-secure contexts).
+3. Build your own UI — no external dependencies. Pure logic is ES2017+; clipboard helper uses `async/await`.
 
-Update procedure:
-1. In UE, select the 5 sources → `Ctrl+C` → paste the T3D into `TEMPLATE`. Neutralize the asset paths to `/Game/LightRig/…` (as done now).
-2. **Synchronize `LIGHTS` manually:** for each actor, carry over `pos` (from `RelativeLocation`), `intensity` (`Intensity`), dimensions (rect: `w`/`h`/`barn`; spot: `radius`/`soft`) and `atten` (`AttenuationRadius` or `null`).
-3. Update `REF_DEFAULT` to the dimensions of the sofa for which the new rig was authored.
-4. Run `npm test` — passing identity proves that `LIGHTS` and `TEMPLATE` are consistent.
+## Regenerating / re-tuning a rig (if the UE rig changes)
+The numbers live in **`LIGHT_BASE`** (shared constants) + **`VIEWS`** (per-shot pos/I/pitch/yaw); `TEMPLATE` is the shared structural skeleton (the F rig).
+- **Re-tune an existing shot:** edit `VIEWS[shot].lights` (position, intensity, pitch, yaw) and, if a size/atten changed, `LIGHT_BASE`.
+- **Add a new shot:** add a `VIEWS` entry + a radio in the "Shot / view" segmented control (id `v<KEY>`).
+- ⚠️ **F must stay in sync with `TEMPLATE`:** F's `VIEWS.F` values + `LIGHT_BASE` must reproduce `TEMPLATE` exactly (that's the identity invariant). If you re-export the skeleton from UE, keep the F numbers matching it and re-run `npm test`.
+- Keep asset paths neutralized to `/Game/LightRig/…` (no "RH" / "3dsource").
 
 ## Tests
-The key invariant — when the reference dimensions are entered, the output is byte-for-byte equal to the source:
+Identity invariant — F at the reference reproduces the skeleton byte-for-byte:
 ```js
-generateT3D(computeAll(453, 274, 77, "A", false, REF_DEFAULT)) === TEMPLATE   // true
+generateT3D(computeAll(453, 274, 77, "A", false, REF_DEFAULT, "F")) === TEMPLATE   // true
 ```
-Ready-to-run (Node 18+):
 ```bash
-npm test          # = node test/sanity.cjs
+npm test          # = node test/sanity.cjs   (Node 18+)
 ```
-`test/sanity.cjs` itself extracts the pure logic from `index.html` and checks: identity
-(modes A and B), the scaled case (the output changes, but the 5 actors and the line count
-are preserved) and the absence of branding. If integration broke something, the test fails
-(non-zero exit code). Run it after any edits to `LIGHTS`/`TEMPLATE`.
+`test/sanity.cjs` extracts the logic from `index.html` and checks: F identity (modes A & B);
+all four views produce 5 actors, the same line count, and no branding; per-view rotations
+(key + right-rim) are correct; scaling changes the output while preserving structure.
+Run it after any edit to `LIGHT_BASE` / `VIEWS` / `TEMPLATE`.
+
+## Project rules (important)
+- This tool lives **only** in `light-rig-scaler` @ `main`. Do **not** save anything about it into the `rh_unreal_2` UE project (a separate repo the session may run from). No "RH" / "3dsource" in files or git history.
+- The UE meshes & their dimensions live in `D:\GitHub\RestorationHardware` (read-only; mesh bounds were dumped via a UE Python snippet — see git history / chat).
 
 ## Getting started in Claude Code
-Open the repository in Claude Code. Everything essential is in `index.html`:
-- the pure logic and `TEMPLATE` — the top of `<script>`;
-- the "Calculation formula" panel — what is computed and how;
-- `README.md` — overview and deployment to GitHub Pages;
-- `.claude/launch.json` — the local server config (`npx serve`).
+Open this repo. Everything essential is in `index.html`: the pure logic + `VIEWS` + `TEMPLATE` at the top of `<script>`, the on-site "Calculation formula" panel, `README.md` for deploy, `.claude/launch.json` for the local server.
