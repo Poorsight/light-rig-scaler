@@ -845,6 +845,11 @@ if (typeof document !== "undefined"){
   const rbPrefixVariants = prefix => [prefix, `${prefix}_FH`];
   const rbAllPresets = () => ({ ...userPresets(), ...BUILTIN });
   const rbPreset = () => rbAllPresets()[$("preset").value] || {};
+  function rbRequiredViewForPreset(name){
+    const left = /(^|[\s_.-])left[\s_-]*arm($|[\s_.-])/i.test(name || "");
+    const right = /(^|[\s_.-])right[\s_-]*arm($|[\s_.-])/i.test(name || "");
+    return left && !right ? "TQL" : right && !left ? "TQR" : "";
+  }
   const rbCommentKey = url => "lrs_render_comment:" + url;
   const rbLoadComment = url => { try { return localStorage.getItem(rbCommentKey(url)) || ""; } catch(e){ return ""; } };
   const rbSaveComment = (url, value) => { try { localStorage.setItem(rbCommentKey(url), value); } catch(e){} };
@@ -867,6 +872,11 @@ if (typeof document !== "undefined"){
     grid.innerHTML = "";
     if (status){ status.style.display = "block"; status.textContent = prefix ? "Checking server renders..." : "This preset has no server render prefix."; }
     if (!prefix) return;
+    const requiredView = rbRequiredViewForPreset(presetName);
+    if (requiredView && view !== requiredView){
+      if (status) status.textContent = `Server renders for this preset are available only in ${requiredView}.`;
+      return;
+    }
 
     let loaded = 0, finished = 0;
     const done = () => {

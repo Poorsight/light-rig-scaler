@@ -24,6 +24,10 @@ try {
 }
 
 const { REF_DEFAULT, TEMPLATE, VIEWS, computeAll, generateT3D } = L;
+const armViewMatch = html.match(/function rbRequiredViewForPreset\(name\)\{([\s\S]*?)\n  \}/);
+const rbRequiredViewForPreset = armViewMatch
+  ? new Function("name", armViewMatch[1])
+  : () => "__missing__";
 
 let failed = 0;
 function check(name, cond) {
@@ -43,6 +47,10 @@ const views = Object.keys(VIEWS);
 check("VIEWS = [F, FH, TQR, TQL]", views.join(",") === "F,FH,TQR,TQL");
 check("default Koper preset is 453x274x77",
   /"KOPER_LEFT_ARM_L_SECTIONAL_prod39250480":\s*\{\s*W:453,\s*D:274,\s*H:77,/.test(html));
+check("render previews: Left Arm -> TQL, Right Arm -> TQR",
+  rbRequiredViewForPreset("KOPER_LEFT_ARM_L_SECTIONAL_prod39250480") === "TQL" &&
+  rbRequiredViewForPreset("Borgo · Right-Arm L (39250511)") === "TQR" &&
+  rbRequiredViewForPreset("Koper · U (39250483)") === "");
 for (const v of views) {
   const out = gen(v);
   const actors = (out.match(/Begin Actor/g) || []).length;

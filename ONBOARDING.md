@@ -54,6 +54,7 @@ The render board does not upload images from the browser anymore. It builds exac
   - `FH` -> `FH`
   - `TQR` -> `RIGHT_ARM`, fallback `TQ`
   - `TQL` -> `LEFT_ARM`, fallback `TQ`
+- Arm-specific preset names gate the render board: `Left Arm` / `LEFT_ARM` presets only search images in `TQ-L`, and `Right Arm` / `RIGHT_ARM` presets only search images in `TQ-R`.
 - Current server folder has renders for these SKU prefixes: `39250511`, `39250480`, `40460153`.
 - If a preset has no `r` prefix, the board shows a local status message instead of trying to load files.
 - If a candidate image returns 404, the card is removed; the page does not break.
