@@ -48,13 +48,23 @@ If actual server filenames differ, change only `RB_MATERIALS`, `RB_VIEW_SUFFIXES
 ## Validation already run
 - Full script syntax check via Node `new Function(script)`: OK.
 - `npm.cmd test`: OK, all checks passed.
+- After deploy, public `index.html` was checked: it contains `Server renders for`, contains `rbPrefixVariants`, and no longer contains `IndexedDB`.
+- Sample public render image URLs from `Renders/` returned HTTP 200.
 
 Use `npm.cmd test` on this Windows machine. Plain `npm test` can fail because PowerShell blocks `npm.ps1`.
 
 ## Deployment note
-Before publishing, confirm with the user because preview deploy makes files public.
+The current `index.html` was deployed to preview after merge to `main`.
 
 The public light-rig URL discussed in chat is:
 `https://preview.3dsource.com/dmitriy.derevyanko/light-rig/`
 
 Do not paste or print FTP passwords. Use the existing local skill config or environment variable.
+
+On this machine, invoke the Codex PowerShell uploader directly from PowerShell:
+
+```powershell
+& 'C:\Users\Dima\.codex\skills\preview-deploy\scripts\upload-preview.ps1' 'D:\GitHub\light-rig-scaler\index.html' 'light-rig'
+```
+
+Running it through a nested `powershell -File ...` failed once with a curl connect error even though direct invocation worked.
